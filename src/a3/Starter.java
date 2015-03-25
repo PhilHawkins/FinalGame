@@ -1,10 +1,10 @@
 package a3;
 
+import FinalGame.FinalGame;
+
 public class Starter {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+		new FinalGame().start();
 	}
-
 }

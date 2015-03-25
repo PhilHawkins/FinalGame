@@ -2,7 +2,6 @@ package gameEngine.input.action.camera;
 
 import gameEngine.camera.OrbitCameraController;
 import net.java.games.input.Event;
-import sage.camera.ICamera;
 import sage.input.action.IAction;
 
 public class OrbitLeftAction implements IAction {

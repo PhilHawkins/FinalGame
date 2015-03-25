@@ -1,8 +1,6 @@
 package gameEngine.input.action.camera;
 
 import gameEngine.input.action.object.SetSpeedAction;
-import graphicslib3D.Point3D;
-import graphicslib3D.Vector3D;
 import net.java.games.input.Event;
 import sage.camera.ICamera;
 import sage.input.action.AbstractInputAction;

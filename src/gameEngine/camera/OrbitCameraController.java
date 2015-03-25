@@ -25,7 +25,7 @@ public class OrbitCameraController {
 	private float minDistance;
 	private float maxDistance;
 	
-	public OrbitCameraController(ICamera c, SceneNode sn, IInputManager i, String cn, boolean isKB){
+	public OrbitCameraController(ICamera c, IInputManager i, SceneNode sn, String cn, boolean isKB){
 		camera = c;
 		target = sn;
 		worldUp = new Vector3D(0, 1, 0);

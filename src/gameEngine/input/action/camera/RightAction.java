@@ -16,11 +16,6 @@ public class RightAction extends AbstractInputAction {
 		runAction = s;
 	}
 
-	public void RightAction(ICamera c, SetSpeedAction r) {
-		camera = c;
-		runAction = r;
-	}
-
 	public void performAction(float time, Event e) {
 		float moveAmount;
 		if (runAction.isRunning()) {
