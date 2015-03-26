@@ -1,11 +1,22 @@
 package FinalGame;
 
+import enums.MoveDirections;
+import enums.ZoomTypes;
+import gameEngine.actions.MovePlayerAction;
+import gameEngine.actions.OrbitCameraAction;
+import gameEngine.actions.QuitGameAction;
+import gameEngine.actions.ZoomCameraAction;
 import gameEngine.camera.OrbitCameraController;
+import graphicslib3D.Matrix3D;
 import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
 
 import java.awt.Color;
 import java.util.ArrayList;
+
+import net.java.games.input.Component.Identifier;
+
+import com.jogamp.newt.Screen;
 
 import sage.app.BaseGame;
 import sage.camera.ICamera;
@@ -15,11 +26,18 @@ import sage.event.EventManager;
 import sage.event.IEventManager;
 import sage.input.IInputManager;
 import sage.input.InputManager;
+import sage.input.IInputManager.INPUT_ACTION_TYPE;
+import sage.input.action.IAction;
 import sage.renderer.IRenderer;
+import sage.scene.Group;
 import sage.scene.SceneNode;
+import sage.scene.SkyBox;
 import sage.scene.shape.Cube;
 import sage.scene.shape.Line;
 import sage.scene.shape.Pyramid;
+import sage.scene.shape.Sphere;
+import sage.texture.Texture;
+import sage.texture.TextureManager;
 
 public class FinalGame extends BaseGame {
 	
@@ -28,10 +46,19 @@ public class FinalGame extends BaseGame {
 	private IEventManager eventManager;
 	private IInputManager inputManager;
 	
+	private IAction quitGameAction;
+	private IAction movePlayerForward, movePlayerBackward, movePlayerLeft, movePlayerRight;
+	private IAction p2movePlayerForwardBackward, p2movePlayerLeftRight;
+	private IAction orbitCameraLeft, orbitCameraRight, orbitCameraForward, orbitCameraBackward;
+	private IAction p2orbitCameraLeftRight, p2orbitCameraUpDown;
+	private IAction zoomInCamera, zoomOutCamera, p2ZoomInCamera, p2ZoomOutCamera;
+	
 	private ICamera camera1, camera2;
 	private SceneNode player1, player2;
+	private Group scene;
 	private OrbitCameraController camera1Controller, camera2Controller;
 	private String keyboardName, gamepadName;
+	SkyBox skyBox;
 
 	protected void initSystem()
 	{
@@ -84,9 +111,12 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void initGame()
 	{
-		createPlayers();
 		createEssentialObjects();
+		createPlayers();
+		initGameElements();
+		linkActionsToControls();
 		createGameWorldObjects();
+		createScene();
 	}
 
 	private void createEssentialObjects() {
@@ -95,26 +125,10 @@ public class FinalGame extends BaseGame {
 		
 		// For managing collisions
 		eventManager = EventManager.getInstance();
-		
-		// Get the display objects
-		display = getDisplaySystem();
-		display.setTitle("Multiplayer Treasure Hunt - Kevin Jones");
-
-		// Get the input manager for inputs.
-		inputManager = getInputManager();
-
-		// Get keyboard, gamepad and mouse
-		keyboardName = inputManager.getKeyboardName();
-		gamepadName = inputManager.getFirstGamepadName();
-		String mouseName = inputManager.getMouseName();
-		
-		// Setup both camera controllers
-		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName, false);
-		//camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
 	}
-	
+
 	private void createPlayers() {
-		player1 = new Cube("PLAYER1");
+		player1 = new Sphere();
 		player1.scale(.5f, .5f, .5f);
 		player1.translate(0, .5f, 50);
 		player1.rotate(180, new Vector3D(0, 1, 0));
@@ -135,6 +149,91 @@ public class FinalGame extends BaseGame {
 		camera2.setViewport(0f, 1f, .55f, 1f);
 	}
 
+	private void initGameElements(){
+		// Get the display objects
+		display = getDisplaySystem();
+		display.setTitle("SUMO! Phil Hawkins and Kevin Jones");
+
+		// Get the input manager for inputs.
+		inputManager = getInputManager();
+
+		// Get keyboard, gamepad and mouse
+		keyboardName = inputManager.getKeyboardName();
+		gamepadName = inputManager.getFirstGamepadName();
+		String mouseName = inputManager.getMouseName();
+		
+		// Setup both camera controllers
+		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
+		//camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
+		
+		// Initalize actions
+		quitGameAction = new QuitGameAction(this);
+		
+		orbitCameraLeft = new OrbitCameraAction(camera1Controller, MoveDirections.LEFT);
+		orbitCameraRight = new OrbitCameraAction(camera1Controller, MoveDirections.RIGHT);
+		orbitCameraForward = new OrbitCameraAction(camera1Controller, MoveDirections.FORWARD);
+		orbitCameraBackward = new OrbitCameraAction(camera1Controller, MoveDirections.BACKWARD);
+		
+		zoomInCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_IN);
+		zoomOutCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_OUT);
+	
+		movePlayerForward = new MovePlayerAction(player1, MoveDirections.FORWARD);
+		movePlayerBackward = new MovePlayerAction(player1, MoveDirections.BACKWARD);
+		movePlayerLeft = new MovePlayerAction(player1, MoveDirections.LEFT);
+		movePlayerRight = new MovePlayerAction(player1, MoveDirections.RIGHT);
+		
+		p2movePlayerForwardBackward = new MovePlayerAction(player2, MoveDirections.LEFTSTICKX);
+		p2movePlayerLeftRight = new MovePlayerAction(player2, MoveDirections.LEFTSTICKY);
+		p2orbitCameraUpDown = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKY);
+		p2orbitCameraLeftRight = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKX);	
+		
+		p2ZoomInCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_IN);
+		p2ZoomOutCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_OUT);
+	}
+	
+	private void linkActionsToControls()
+	{
+		// Escape to quit button
+		inputManager.associateAction(keyboardName, Identifier.Key.ESCAPE, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		// Keyboard Move
+		inputManager.associateAction(keyboardName, Identifier.Key.W, movePlayerForward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.S, movePlayerBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.A, movePlayerLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.D, movePlayerRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		// Keyboard Orbit
+		inputManager.associateAction(keyboardName, Identifier.Key.UP, orbitCameraForward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.DOWN, orbitCameraBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.LEFT, orbitCameraLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.RIGHT, orbitCameraRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		inputManager.associateAction(keyboardName, Identifier.Key.LEFT, orbitCameraLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(keyboardName, Identifier.Key.RIGHT, orbitCameraRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		//Keyboard Zoom In/Out
+		inputManager.associateAction(keyboardName, Identifier.Key.Z, zoomInCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		inputManager.associateAction(keyboardName, Identifier.Key.X, zoomOutCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+	
+		// Gamepad back button escape. First gamepad code. If gamepad not found exit game.
+		try
+		{
+			inputManager.associateAction(gamepadName, Identifier.Button._6, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		}
+		catch (Exception e)
+		{
+			System.err.println("Turn your controller back on!");
+			System.exit(0);
+		}
+	
+		// Gamepad Move
+		inputManager.associateAction(gamepadName, Identifier.Axis.X, p2movePlayerForwardBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(gamepadName, Identifier.Axis.Y, p2movePlayerLeftRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		// Gamepad pitch and yaw
+		inputManager.associateAction(gamepadName, Identifier.Axis.RX, p2orbitCameraLeftRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		inputManager.associateAction(gamepadName, Identifier.Axis.RY, p2orbitCameraUpDown, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		// Gamepad Zoom In/out
+		inputManager.associateAction(gamepadName, Identifier.Button._4, p2ZoomInCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		inputManager.associateAction(gamepadName, Identifier.Button._5, p2ZoomOutCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+	}
+
 	private void createGameWorldObjects() {
 		createWorldAxes();
 	}
@@ -152,9 +251,28 @@ public class FinalGame extends BaseGame {
 		addGameWorldObject(zAxis);
 	}
 
+	private void createScene()
+	{
+		scene = new Group("Root Node");
+		skyBox = new SkyBox("SkyBox", 20.0f, 20.0f, 20.0f);
+		scene.addChild(skyBox);
+		
+		Pyramid pyr = new Pyramid();
+		pyr.translate(5, 2, 2);
+		
+		scene.addChild(pyr);
+		
+		//addGameWorldObject(scene);
+	}
+
 	@Override
 	protected void update(float elapsedTimeMS)
 	{		
+		Point3D cameraLocation = camera1.getLocation();
+		Matrix3D cameraTranslation = new Matrix3D();
+		cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
+		skyBox.setLocalTranslation(cameraTranslation);		
+		
 		camera1Controller.update(elapsedTimeMS);
 		//camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
