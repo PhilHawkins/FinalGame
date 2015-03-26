@@ -50,7 +50,7 @@ public class FinalGame extends BaseGame {
 	
 	private IDisplaySystem createDisplaySystem()
 	{
-		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, true, "sage.renderer.jogl.JOGLRenderer");
+		IDisplaySystem display = new UltraDisplaySystem(700, 300, 24, 20, true, "sage.renderer.jogl.JOGLRenderer");
 		System.out.print("\nWaiting for display creation...");
 		int count = 0;
 		// wait until display creation completes or a timeout occurs

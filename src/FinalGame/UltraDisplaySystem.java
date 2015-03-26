@@ -39,7 +39,7 @@ public class UltraDisplaySystem implements IDisplaySystem
 		if (myRenderer == null)
 		{
 			throw new RuntimeException("Unable to find renderer '" + rendererClassName + "'");
-		}
+		}	
 
 		rendererCanvas = myRenderer.getCanvas();
 		myFrame = new JFrame("Default Title");
@@ -74,7 +74,6 @@ public class UltraDisplaySystem implements IDisplaySystem
 			{
 				try
 				{
-//					device.
 					device.setDisplayMode(dispMode);
 					myFrame.setSize(dispMode.getWidth(), dispMode.getHeight());
 				}
