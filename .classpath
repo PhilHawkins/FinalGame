@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/jogl"/>
 	<classpathentry kind="lib" path="C:/javagaming/graphicslib3D/graphicslib3D.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jinput/jinput.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/gluegen.jar"/>
@@ -11,5 +12,8 @@
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-all.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/sage/sage.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/vecmath/vecmath.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jogl/joal-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jogl/jocl-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jogl/gluegen-rt-natives-windows-amd64.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

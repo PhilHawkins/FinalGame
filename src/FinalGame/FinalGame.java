@@ -84,8 +84,8 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void initGame()
 	{
-		createEssentialObjects();
 		createPlayers();
+		createEssentialObjects();
 		createGameWorldObjects();
 	}
 
@@ -110,7 +110,7 @@ public class FinalGame extends BaseGame {
 		
 		// Setup both camera controllers
 		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName, false);
-		camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
+		//camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
 	}
 	
 	private void createPlayers() {
@@ -156,7 +156,7 @@ public class FinalGame extends BaseGame {
 	protected void update(float elapsedTimeMS)
 	{		
 		camera1Controller.update(elapsedTimeMS);
-		camera2Controller.update(elapsedTimeMS);
+		//camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 	}
 	
@@ -165,8 +165,8 @@ public class FinalGame extends BaseGame {
 	{
 		renderer.setCamera(camera1);
 		super.render();
-		renderer.setCamera(camera2);
-		super.render();		
+		//renderer.setCamera(camera2);
+		//super.render();		
 	}
 
 	@Override

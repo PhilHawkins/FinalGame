@@ -74,6 +74,7 @@ public class UltraDisplaySystem implements IDisplaySystem
 			{
 				try
 				{
+//					device.
 					device.setDisplayMode(dispMode);
 					myFrame.setSize(dispMode.getWidth(), dispMode.getHeight());
 				}
