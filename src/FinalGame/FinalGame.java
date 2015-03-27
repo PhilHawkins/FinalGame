@@ -6,7 +6,13 @@ import gameEngine.actions.MovePlayerAction;
 import gameEngine.actions.OrbitCameraAction;
 import gameEngine.actions.QuitGameAction;
 import gameEngine.actions.ZoomCameraAction;
-import gameEngine.camera.OrbitCameraController;
+import gameEngine.phil.input.action.object.MoveObjectAction;
+import gameEngine.phil.input.action.object.MoveObjectBackwardAction;
+import gameEngine.phil.input.action.object.MoveObjectForwardAction;
+import gameEngine.phil.input.action.object.RotateObjectAction;
+import gameEngine.phil.input.action.object.RotateObjectLeft;
+import gameEngine.phil.input.action.object.RotateObjectRight;
+import gameEngine.phil.camera.OrbitCameraController;
 import graphicslib3D.Matrix3D;
 import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
@@ -14,6 +20,7 @@ import graphicslib3D.Vector3D;
 import java.awt.Color;
 import java.util.ArrayList;
 
+import net.java.games.input.Controller;
 import net.java.games.input.Component.Identifier;
 
 import com.jogamp.newt.Screen;
@@ -33,6 +40,7 @@ import sage.scene.Group;
 import sage.scene.SceneNode;
 import sage.scene.SkyBox;
 import sage.scene.shape.Cube;
+import sage.scene.shape.Cylinder;
 import sage.scene.shape.Line;
 import sage.scene.shape.Pyramid;
 import sage.scene.shape.Sphere;
@@ -111,12 +119,12 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void initGame()
 	{
+		createScene();
 		createEssentialObjects();
 		createPlayers();
 		initGameElements();
-		linkActionsToControls();
+		//linkActionsToControls();
 		createGameWorldObjects();
-		createScene();
 	}
 
 	private void createEssentialObjects() {
@@ -130,23 +138,25 @@ public class FinalGame extends BaseGame {
 	private void createPlayers() {
 		player1 = new Sphere();
 		player1.scale(.5f, .5f, .5f);
-		player1.translate(0, .5f, 50);
+		player1.translate(0, .5f, 5);
 		player1.rotate(180, new Vector3D(0, 1, 0));
-		addGameWorldObject(player1);
+		//addGameWorldObject(player1);
+		scene.addChild(player1);
 	
 		camera1 = new JOGLCamera(renderer);
-		camera1.setPerspectiveFrustum(60, 2, 1, 1000);
-		camera1.setViewport(0f, 1f, 0f, .45f);
+		camera1.setPerspectiveFrustum(90, 2, .1, 1000);
+		camera1.setViewport(0f, 1f, .55f, 1f);
 	
 		player2 = new Pyramid("PLAYER2");
 		player2.scale(.5f, .5f, .5f);
-		player2.translate(50, .5f, 0);
+		player2.translate(5, .5f, 0);
 		player2.rotate(-90, new Vector3D(0, 1, 0));
-		addGameWorldObject(player2);
+//		addGameWorldObject(player2);
+		scene.addChild(player2);
 	
 		camera2 = new JOGLCamera(renderer);
-		camera2.setPerspectiveFrustum(60, 2, 1, 1000);
-		camera2.setViewport(0f, 1f, .55f, 1f);
+		camera2.setPerspectiveFrustum(90, 2, .1, 1000);
+		camera2.setViewport(0f, 1f, 0f, .45f);
 	}
 
 	private void initGameElements(){
@@ -163,32 +173,68 @@ public class FinalGame extends BaseGame {
 		String mouseName = inputManager.getMouseName();
 		
 		// Setup both camera controllers
-		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
-		//camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
+//		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
+//		camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName);
+		
+		// Setup Phil's camera controllers
+		camera1Controller = new OrbitCameraController(camera1, player1, inputManager, keyboardName, true);
+		camera2Controller = new OrbitCameraController(camera2, player2, inputManager, gamepadName, false);
+		
+		// initialize Phil's actions
+			
+
+		RotateObjectLeft rotatePlayer1Left = new RotateObjectLeft(player1);
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.A, 
+				rotatePlayer1Left, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		RotateObjectRight rotatePlayer1Right = new RotateObjectRight(player1);
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, 
+				rotatePlayer1Right, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1);
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
+				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1);
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
+				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		if(gamepadName != null){
+			RotateObjectAction rotateP2 = new RotateObjectAction(player2);
+			MoveObjectAction moveP2 = new MoveObjectAction(player2);
+			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.X,
+					rotateP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.Y, 
+					moveP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		}
+		
+		quitGameAction = new QuitGameAction(this);
+		inputManager.associateAction(keyboardName, Identifier.Key.ESCAPE, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+			
 		
 		// Initalize actions
-		quitGameAction = new QuitGameAction(this);
-		
-		orbitCameraLeft = new OrbitCameraAction(camera1Controller, MoveDirections.LEFT);
-		orbitCameraRight = new OrbitCameraAction(camera1Controller, MoveDirections.RIGHT);
-		orbitCameraForward = new OrbitCameraAction(camera1Controller, MoveDirections.FORWARD);
-		orbitCameraBackward = new OrbitCameraAction(camera1Controller, MoveDirections.BACKWARD);
-		
-		zoomInCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_IN);
-		zoomOutCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_OUT);
-	
-		movePlayerForward = new MovePlayerAction(player1, MoveDirections.FORWARD);
-		movePlayerBackward = new MovePlayerAction(player1, MoveDirections.BACKWARD);
-		movePlayerLeft = new MovePlayerAction(player1, MoveDirections.LEFT);
-		movePlayerRight = new MovePlayerAction(player1, MoveDirections.RIGHT);
-		
-		p2movePlayerForwardBackward = new MovePlayerAction(player2, MoveDirections.LEFTSTICKX);
-		p2movePlayerLeftRight = new MovePlayerAction(player2, MoveDirections.LEFTSTICKY);
-		p2orbitCameraUpDown = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKY);
-		p2orbitCameraLeftRight = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKX);	
-		
-		p2ZoomInCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_IN);
-		p2ZoomOutCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_OUT);
+//		quitGameAction = new QuitGameAction(this);
+//		
+//		orbitCameraLeft = new OrbitCameraAction(camera1Controller, MoveDirections.LEFT);
+//		orbitCameraRight = new OrbitCameraAction(camera1Controller, MoveDirections.RIGHT);
+//		orbitCameraForward = new OrbitCameraAction(camera1Controller, MoveDirections.FORWARD);
+//		orbitCameraBackward = new OrbitCameraAction(camera1Controller, MoveDirections.BACKWARD);
+//		
+//		zoomInCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_IN);
+//		zoomOutCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_OUT);
+//	
+//		movePlayerForward = new MovePlayerAction(player1, MoveDirections.FORWARD);
+//		movePlayerBackward = new MovePlayerAction(player1, MoveDirections.BACKWARD);
+//		movePlayerLeft = new MovePlayerAction(player1, MoveDirections.LEFT);
+//		movePlayerRight = new MovePlayerAction(player1, MoveDirections.RIGHT);
+//		
+//		p2movePlayerForwardBackward = new MovePlayerAction(player2, MoveDirections.LEFTSTICKX);
+//		p2movePlayerLeftRight = new MovePlayerAction(player2, MoveDirections.LEFTSTICKY);
+//		p2orbitCameraUpDown = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKY);
+//		p2orbitCameraLeftRight = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKX);	
+//		
+//		p2ZoomInCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_IN);
+//		p2ZoomOutCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_OUT);
 	}
 	
 	private void linkActionsToControls()
@@ -200,14 +246,13 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, Identifier.Key.S, movePlayerBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		inputManager.associateAction(keyboardName, Identifier.Key.A, movePlayerLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		inputManager.associateAction(keyboardName, Identifier.Key.D, movePlayerRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
 		// Keyboard Orbit
 		inputManager.associateAction(keyboardName, Identifier.Key.UP, orbitCameraForward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		inputManager.associateAction(keyboardName, Identifier.Key.DOWN, orbitCameraBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		inputManager.associateAction(keyboardName, Identifier.Key.LEFT, orbitCameraLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		inputManager.associateAction(keyboardName, Identifier.Key.RIGHT, orbitCameraRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		inputManager.associateAction(keyboardName, Identifier.Key.LEFT, orbitCameraLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.RIGHT, orbitCameraRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		//Keyboard Zoom In/Out
 		inputManager.associateAction(keyboardName, Identifier.Key.Z, zoomInCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		inputManager.associateAction(keyboardName, Identifier.Key.X, zoomOutCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
@@ -236,6 +281,14 @@ public class FinalGame extends BaseGame {
 
 	private void createGameWorldObjects() {
 		createWorldAxes();
+		
+		Cylinder ground = new Cylinder();
+		ground.setRadius(15);
+		ground.setSlices(20);
+		ground.setSolid(true);
+		ground.setColor(Color.gray);
+		ground.rotate(90, new Vector3D(1, 0, 0));
+		addGameWorldObject(ground);
 	}
 
 	private void createWorldAxes() {
@@ -254,15 +307,15 @@ public class FinalGame extends BaseGame {
 	private void createScene()
 	{
 		scene = new Group("Root Node");
-		skyBox = new SkyBox("SkyBox", 20.0f, 20.0f, 20.0f);
+		skyBox = new SkyBox("SkyBox", 500.0f, 500.0f, 500.0f);
 		scene.addChild(skyBox);
 		
-		Pyramid pyr = new Pyramid();
-		pyr.translate(5, 2, 2);
+//		Pyramid pyr = new Pyramid();
+//		pyr.translate(5, 2, 2);
 		
-		scene.addChild(pyr);
+//		scene.addChild(pyr);
 		
-		//addGameWorldObject(scene);
+		addGameWorldObject(scene);
 	}
 
 	@Override
@@ -274,7 +327,7 @@ public class FinalGame extends BaseGame {
 		skyBox.setLocalTranslation(cameraTranslation);		
 		
 		camera1Controller.update(elapsedTimeMS);
-		//camera2Controller.update(elapsedTimeMS);
+		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 	}
 	
@@ -283,8 +336,8 @@ public class FinalGame extends BaseGame {
 	{
 		renderer.setCamera(camera1);
 		super.render();
-		//renderer.setCamera(camera2);
-		//super.render();		
+		renderer.setCamera(camera2);
+		super.render();		
 	}
 
 	@Override
