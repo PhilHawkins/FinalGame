@@ -136,7 +136,7 @@ public class FinalGame extends BaseGame {
 	
 		camera1 = new JOGLCamera(renderer);
 		camera1.setPerspectiveFrustum(60, 2, 1, 1000);
-		camera1.setViewport(0f, 1f, 0f, .45f);
+		camera1.setViewport(0f, 1f, .55f, 1f);
 	
 		player2 = new Pyramid("PLAYER2");
 		player2.scale(.5f, .5f, .5f);
@@ -146,7 +146,7 @@ public class FinalGame extends BaseGame {
 	
 		camera2 = new JOGLCamera(renderer);
 		camera2.setPerspectiveFrustum(60, 2, 1, 1000);
-		camera2.setViewport(0f, 1f, .55f, 1f);
+		camera2.setViewport(0f, 1f, 0f, .45f);
 	}
 
 	private void initGameElements(){
@@ -164,7 +164,7 @@ public class FinalGame extends BaseGame {
 		
 		// Setup both camera controllers
 		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
-		//camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName, true);
+		camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName);
 		
 		// Initalize actions
 		quitGameAction = new QuitGameAction(this);
@@ -274,7 +274,7 @@ public class FinalGame extends BaseGame {
 		skyBox.setLocalTranslation(cameraTranslation);		
 		
 		camera1Controller.update(elapsedTimeMS);
-		//camera2Controller.update(elapsedTimeMS);
+		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 	}
 	
@@ -283,8 +283,8 @@ public class FinalGame extends BaseGame {
 	{
 		renderer.setCamera(camera1);
 		super.render();
-		//renderer.setCamera(camera2);
-		//super.render();		
+		renderer.setCamera(camera2);
+		super.render();		
 	}
 
 	@Override
