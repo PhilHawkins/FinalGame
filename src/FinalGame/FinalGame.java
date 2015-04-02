@@ -1,6 +1,8 @@
 package FinalGame;
 
 import gameEngine.actions.QuitGameAction;
+import gameEngine.networking.FinalGameClient;
+import gameEngine.networking.GhostAvatar;
 import gameEngine.phil.input.action.object.MoveObjectAction;
 import gameEngine.phil.input.action.object.MoveObjectBackwardAction;
 import gameEngine.phil.input.action.object.MoveObjectForwardAction;
@@ -14,7 +16,12 @@ import graphicslib3D.Vector3D;
 
 import java.awt.Color;
 import java.io.File;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.UUID;
+import java.util.Vector;
 
 import net.java.games.input.Component.Identifier;
 import sage.app.BaseGame;
@@ -27,6 +34,7 @@ import sage.input.IInputManager;
 import sage.input.InputManager;
 import sage.input.IInputManager.INPUT_ACTION_TYPE;
 import sage.input.action.IAction;
+import sage.networking.IGameConnection.ProtocolType;
 import sage.renderer.IRenderer;
 import sage.scene.Group;
 import sage.scene.SceneNode;
@@ -61,6 +69,22 @@ public class FinalGame extends BaseGame {
 	SkyBox skyBox;
 	
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
+	
+	private String serverAddress;
+	private int serverPort;
+	private ProtocolType serverProtocol;
+	
+	private FinalGameClient thisClient;
+	
+	private Vector<GhostAvatar> ghostAvatars;
+	
+	public FinalGame(String serverAddr, int sPort){
+		super();
+		this.serverAddress = serverAddr;
+		this.serverPort = sPort;
+		this.serverProtocol = ProtocolType.TCP;
+		
+	}
 
 	protected void initSystem()
 	{
@@ -113,6 +137,22 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void initGame()
 	{
+		try
+		 { 
+			thisClient = new FinalGameClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this); 
+		 }
+		 catch (UnknownHostException e) { 
+			 e.printStackTrace(); 
+		}
+		 catch (IOException e) { 
+			 e.printStackTrace(); 
+		}
+		 
+		if (thisClient != null) 
+		{ 
+			thisClient.sendJoinMessage(); 
+		}
+		
 		createScene();
 		createEssentialObjects();
 		createPlayers();
@@ -335,6 +375,10 @@ public class FinalGame extends BaseGame {
 		cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
 		skyBox.setLocalTranslation(cameraTranslation);		
 		
+		if(thisClient != null){
+			thisClient.processPackets();
+		}
+		
 		camera1Controller.update(elapsedTimeMS);
 		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
@@ -354,5 +398,64 @@ public class FinalGame extends BaseGame {
 	{
 		display.close();
 		super.shutdown();
+		if(thisClient != null)
+		 { 
+			thisClient.sendByeMessage();
+			 try { 
+				 	thisClient.shutdown(); 
+				} // shutdown() is inherited
+			catch (IOException e) { 
+				e.printStackTrace(); 
+			}
+		} 
+		
+
 	}
+
+	public void setIsConnected(boolean b) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public Vector3D getPlayerPosition() {
+		// TODO Auto-generated method stub
+		Vector3D playerPos = new Vector3D();
+		Matrix3D worldtrans = player1.getWorldTranslation();
+		playerPos.mult(worldtrans);
+		return playerPos;
+	}
+
+	public void removeGhostAvatar(UUID ghostID) {
+		// TODO Auto-generated method stub
+		for(GhostAvatar g : ghostAvatars){
+			if(g.getID() == ghostID){
+				ghostAvatars.remove(g);
+			}
+		}
+	}
+
+	public void createGhostAvatar(UUID ghostID, String[] ghostPosition) {
+		// TODO Auto-generated method stub
+		GhostAvatar newAvatar = new GhostAvatar(ghostID, ghostPosition);
+		ghostAvatars.add(newAvatar);
+	}
+
+	public void updateGhostAvatar(UUID ghostID, String[] ghostPosition) {
+		// TODO Auto-generated method stub
+		for(GhostAvatar g : ghostAvatars){
+			if(g.getID() == ghostID){
+				g.updatePosition(ghostPosition);
+			}
+		}
+	}
+
+	public void moveGhostAvatar(UUID ghostID, String[] ghostMovement) {
+		// TODO Auto-generated method stub
+		for(GhostAvatar g : ghostAvatars){
+			if(g.getID() == ghostID){
+				g.move(ghostMovement);
+			}
+		}
+	}
+
 }
