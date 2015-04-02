@@ -1,11 +1,6 @@
 package FinalGame;
 
-import enums.MoveDirections;
-import enums.ZoomTypes;
-import gameEngine.actions.MovePlayerAction;
-import gameEngine.actions.OrbitCameraAction;
 import gameEngine.actions.QuitGameAction;
-import gameEngine.actions.ZoomCameraAction;
 import gameEngine.phil.input.action.object.MoveObjectAction;
 import gameEngine.phil.input.action.object.MoveObjectBackwardAction;
 import gameEngine.phil.input.action.object.MoveObjectForwardAction;
@@ -18,13 +13,10 @@ import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
 
 import java.awt.Color;
+import java.io.File;
 import java.util.ArrayList;
 
-import net.java.games.input.Controller;
 import net.java.games.input.Component.Identifier;
-
-import com.jogamp.newt.Screen;
-
 import sage.app.BaseGame;
 import sage.camera.ICamera;
 import sage.camera.JOGLCamera;
@@ -39,7 +31,7 @@ import sage.renderer.IRenderer;
 import sage.scene.Group;
 import sage.scene.SceneNode;
 import sage.scene.SkyBox;
-import sage.scene.shape.Cube;
+import sage.scene.SkyBox.Face;
 import sage.scene.shape.Cylinder;
 import sage.scene.shape.Line;
 import sage.scene.shape.Pyramid;
@@ -67,6 +59,8 @@ public class FinalGame extends BaseGame {
 	private OrbitCameraController camera1Controller, camera2Controller;
 	private String keyboardName, gamepadName;
 	SkyBox skyBox;
+	
+	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
 
 	protected void initSystem()
 	{
@@ -308,6 +302,21 @@ public class FinalGame extends BaseGame {
 	{
 		scene = new Group("Root Node");
 		skyBox = new SkyBox("SkyBox", 500.0f, 500.0f, 500.0f);
+		
+		Texture northTexture = TextureManager.loadTexture2D(imagesDirectory + "front.png");
+		Texture southTexture = TextureManager.loadTexture2D(imagesDirectory + "back.png");
+		Texture eastTexture = TextureManager.loadTexture2D(imagesDirectory + "right.png");
+		Texture westTexture = TextureManager.loadTexture2D(imagesDirectory + "left.png");
+		Texture upTexture = TextureManager.loadTexture2D(imagesDirectory + "up.png");
+		Texture downTexture = TextureManager.loadTexture2D(imagesDirectory + "down.png");
+		
+		skyBox.setTexture(Face.North, northTexture);
+		skyBox.setTexture(Face.South, southTexture);
+		skyBox.setTexture(Face.East, eastTexture);
+		skyBox.setTexture(Face.West, westTexture);
+		skyBox.setTexture(Face.Up, upTexture);
+		skyBox.setTexture(Face.Down, downTexture);		
+		
 		scene.addChild(skyBox);
 		
 //		Pyramid pyr = new Pyramid();
