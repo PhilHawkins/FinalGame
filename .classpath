@@ -10,10 +10,12 @@
 	<classpathentry kind="lib" path="C:/javagaming/jogl/joal.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jocl.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-all.jar"/>
-	<classpathentry kind="lib" path="C:/javagaming/sage/sage.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/sage/sage.jar" sourcepath="C:/javagaming/sage/sage.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/vecmath/vecmath.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/joal-natives-windows-amd64.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jocl-natives-windows-amd64.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/gluegen-rt-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-all-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-test.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
