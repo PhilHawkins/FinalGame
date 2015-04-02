@@ -14,7 +14,16 @@ import graphicslib3D.Vector3D;
 
 import java.awt.Color;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 
 import net.java.games.input.Component.Identifier;
 import sage.app.BaseGame;
@@ -61,7 +70,8 @@ public class FinalGame extends BaseGame {
 	SkyBox skyBox;
 	
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
-
+	private static String scriptsDirectory = "." + File.separator + "bin" + File.separator + "scripts" + File.separator;
+	
 	protected void initSystem()
 	{
 		// Call local method to create Display System object
@@ -299,32 +309,47 @@ public class FinalGame extends BaseGame {
 	}
 
 	private void createScene()
-	{
-		scene = new Group("Root Node");
-		skyBox = new SkyBox("SkyBox", 500.0f, 500.0f, 500.0f);
+	{		
+		ScriptEngineManager factory = new ScriptEngineManager(); 
+		String sceneFileName = scriptsDirectory + "CreateScene.js";	
 		
-		Texture northTexture = TextureManager.loadTexture2D(imagesDirectory + "front.png");
-		Texture southTexture = TextureManager.loadTexture2D(imagesDirectory + "back.png");
-		Texture eastTexture = TextureManager.loadTexture2D(imagesDirectory + "right.png");
-		Texture westTexture = TextureManager.loadTexture2D(imagesDirectory + "left.png");
-		Texture upTexture = TextureManager.loadTexture2D(imagesDirectory + "up.png");
-		Texture downTexture = TextureManager.loadTexture2D(imagesDirectory + "down.png");
+		// get the JavaScript engine
+		ScriptEngine jsEngine = factory.getEngineByName("js");
 		
-		skyBox.setTexture(Face.North, northTexture);
-		skyBox.setTexture(Face.South, southTexture);
-		skyBox.setTexture(Face.East, eastTexture);
-		skyBox.setTexture(Face.West, westTexture);
-		skyBox.setTexture(Face.Up, upTexture);
-		skyBox.setTexture(Face.Down, downTexture);		
+		// run the script
+		this.executeScript(jsEngine, sceneFileName);
 		
-		scene.addChild(skyBox);
-		
-//		Pyramid pyr = new Pyramid();
-//		pyr.translate(5, 2, 2);
-		
-//		scene.addChild(pyr);
+		scene = (Group)jsEngine.get("scene");
+		skyBox = (SkyBox)jsEngine.get("skyBox");
 		
 		addGameWorldObject(scene);
+	}
+	
+	private void executeScript(ScriptEngine engine, String scriptFileName) 
+	{
+		try
+		{ 
+			FileReader fileReader = new FileReader(scriptFileName);
+			engine.eval(fileReader);
+			fileReader.close(); 
+		}
+		//execute the script statements in the file
+		catch (FileNotFoundException e1)
+		{ 
+			System.out.println(scriptFileName + " not found " + e1); 
+		}
+		catch (IOException e2)
+		{ 
+			System.out.println("IO problem with " + scriptFileName + e2); 
+		} 
+		catch (ScriptException e3)
+		{ 
+			System.out.println("ScriptException in " + scriptFileName + e3); 
+		} 
+		catch (NullPointerException e4)
+		{ 
+			System.out.println ("Null ptr exception in " + scriptFileName + e4); 
+		}
 	}
 
 	@Override
