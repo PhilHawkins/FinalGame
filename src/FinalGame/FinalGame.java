@@ -46,12 +46,18 @@ import sage.networking.IGameConnection.ProtocolType;
 import sage.renderer.IRenderer;
 import sage.scene.Group;
 import sage.scene.SceneNode;
+import sage.scene.SceneNode.CULL_MODE;
 import sage.scene.SkyBox;
 import sage.scene.SkyBox.Face;
 import sage.scene.shape.Cylinder;
 import sage.scene.shape.Line;
 import sage.scene.shape.Pyramid;
 import sage.scene.shape.Sphere;
+import sage.scene.state.RenderState.RenderStateType;
+import sage.scene.state.TextureState;
+import sage.terrain.HillHeightMap;
+import sage.terrain.ImageBasedHeightMap;
+import sage.terrain.TerrainBlock;
 import sage.texture.Texture;
 import sage.texture.TextureManager;
 
@@ -61,6 +67,8 @@ public class FinalGame extends BaseGame {
 	private IRenderer renderer;
 	private IEventManager eventManager;
 	private IInputManager inputManager;
+	
+	private boolean foundController;
 	
 	private IAction quitGameAction;
 	private IAction movePlayerForward, movePlayerBackward, movePlayerLeft, movePlayerRight;
@@ -72,7 +80,7 @@ public class FinalGame extends BaseGame {
 	private ICamera camera1, camera2;
 	private SceneNode player1, player2;
 	private Group scene;
-	private OrbitCameraController camera1Controller, camera2Controller;
+	private OrbitCameraController camera1Controller, camera1GPController;
 	private String keyboardName, gamepadName;
 	SkyBox skyBox;
 	
@@ -87,11 +95,14 @@ public class FinalGame extends BaseGame {
 	
 	private Vector<GhostAvatar> ghostAvatars;
 	
+	public TerrainBlock hillTerrain;
+	
 	public FinalGame(String serverAddr, int sPort){
 		super();
 		this.serverAddress = serverAddr;
 		this.serverPort = sPort;
 		this.serverProtocol = ProtocolType.TCP;
+		ghostAvatars = new Vector<GhostAvatar>();
 		
 	}
 
@@ -112,7 +123,7 @@ public class FinalGame extends BaseGame {
 	
 	private IDisplaySystem createDisplaySystem()
 	{
-		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, true, "sage.renderer.jogl.JOGLRenderer");
+		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, false, "sage.renderer.jogl.JOGLRenderer");
 		System.out.print("\nWaiting for display creation...");
 		int count = 0;
 		// wait until display creation completes or a timeout occurs
@@ -165,9 +176,42 @@ public class FinalGame extends BaseGame {
 		createScene();
 		createEssentialObjects();
 		createPlayers();
+		initTerrain();
 		initGameElements();
 		//linkActionsToControls();
 		createGameWorldObjects();
+	}
+
+	private void initTerrain() {
+//		HillHeightMap hhm = new HillHeightMap(50, 15, 15.0f, 16.0f,(byte)2, 12345);
+		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circleGradient.jpg");
+//		hhm.setHeightScale(0.1f);
+		 hillTerrain = createTerrainBlock(heightMap);
+		 // create texture and texture state to color the terrain
+		 TextureState groundState;
+		 Texture groundTexture = TextureManager.loadTexture2D(imagesDirectory + "/Craterscape.jpg");
+		 groundTexture.setApplyMode(sage.texture.Texture.ApplyMode.Replace);
+		 groundState = (TextureState) display.getRenderer().createRenderState(RenderStateType.Texture);
+		 groundState.setTexture(groundTexture,0);
+		 groundState.setEnabled(true);
+		 // apply the texture to the terrain
+		 hillTerrain.setRenderState(groundState);
+		 addGameWorldObject(hillTerrain);
+		
+	}
+
+	private TerrainBlock createTerrainBlock(ImageBasedHeightMap heightMap) {
+		float heightScale = 0.05f;
+		Vector3D terrainScale = new Vector3D(1, heightScale, 1);
+		// use the size of the height map as the size of the terrain
+		int terrainSize = heightMap.getSize();
+		// specify terrain origin so heightmap (0,0) is at world origin
+		float cornerHeight = heightMap.getTrueHeightAtPoint(0, 0) * heightScale;
+		Point3D terrainOrigin = new Point3D(-25, 0.1f, -25);
+		// create a terrain block using the height map
+		String name = "Terrain:" + heightMap.getClass().getSimpleName();
+		TerrainBlock tb = new TerrainBlock(name, terrainSize, terrainScale, heightMap.getHeightData(), terrainOrigin);
+		return tb;
 	}
 
 	private void createEssentialObjects() {
@@ -181,25 +225,25 @@ public class FinalGame extends BaseGame {
 	private void createPlayers() {
 		player1 = new Sphere();
 		player1.scale(.5f, .5f, .5f);
-		player1.translate(0, .5f, 5);
+		player1.translate(0, 3f, 5);
 		player1.rotate(180, new Vector3D(0, 1, 0));
 		//addGameWorldObject(player1);
 		scene.addChild(player1);
 	
 		camera1 = new JOGLCamera(renderer);
-		camera1.setPerspectiveFrustum(90, 2, .1, 1000);
-		camera1.setViewport(0f, 1f, .55f, 1f);
+		camera1.setPerspectiveFrustum(130, 2, .1, 1000);
+		camera1.setViewport(0f, 1f, 0f, 1f);
 	
-		player2 = new Pyramid("PLAYER2");
-		player2.scale(.5f, .5f, .5f);
-		player2.translate(5, .5f, 0);
-		player2.rotate(-90, new Vector3D(0, 1, 0));
-//		addGameWorldObject(player2);
-		scene.addChild(player2);
-	
-		camera2 = new JOGLCamera(renderer);
-		camera2.setPerspectiveFrustum(90, 2, .1, 1000);
-		camera2.setViewport(0f, 1f, 0f, .45f);
+//		player2 = new Pyramid("PLAYER2");
+//		player2.scale(.5f, .5f, .5f);
+//		player2.translate(5, .5f, 0);
+//		player2.rotate(-90, new Vector3D(0, 1, 0));
+////		addGameWorldObject(player2);
+//		scene.addChild(player2);
+//	
+//		camera2 = new JOGLCamera(renderer);
+//		camera2.setPerspectiveFrustum(90, 2, .1, 1000);
+//		camera2.setViewport(0f, 1f, 0f, .45f);
 	}
 
 	private void initGameElements(){
@@ -213,7 +257,12 @@ public class FinalGame extends BaseGame {
 		// Get keyboard, gamepad and mouse
 		keyboardName = inputManager.getKeyboardName();
 		gamepadName = inputManager.getFirstGamepadName();
-		String mouseName = inputManager.getMouseName();
+		
+		if(gamepadName != null){
+			foundController = true;
+		}
+		
+//		String mouseName = inputManager.getMouseName();
 		
 		// Setup both camera controllers
 //		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
@@ -221,7 +270,11 @@ public class FinalGame extends BaseGame {
 		
 		// Setup Phil's camera controllers
 		camera1Controller = new OrbitCameraController(camera1, player1, inputManager, keyboardName, true);
-		camera2Controller = new OrbitCameraController(camera2, player2, inputManager, gamepadName, false);
+		
+//		if(foundController)
+//			camera1GPController = new OrbitCameraController(camera1, player1, inputManager, keyboardName, false);
+		
+		//camera2Controller = new OrbitCameraController(camera2, player2, inputManager, gamepadName, false);
 		
 		// initialize Phil's actions
 			
@@ -234,7 +287,7 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, 
 				rotatePlayer1Right, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1);
+		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
 				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
@@ -242,14 +295,14 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
 				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		if(gamepadName != null){
-			RotateObjectAction rotateP2 = new RotateObjectAction(player2);
-			MoveObjectAction moveP2 = new MoveObjectAction(player2);
-			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.X,
-					rotateP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.Y, 
-					moveP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		}
+//		if(gamepadName != null){
+//			RotateObjectAction rotateP2 = new RotateObjectAction(player2);
+//			MoveObjectAction moveP2 = new MoveObjectAction(player2);
+//			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.X,
+//					rotateP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+//			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.Y, 
+//					moveP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+//		}
 		
 		quitGameAction = new QuitGameAction(this);
 		inputManager.associateAction(keyboardName, Identifier.Key.ESCAPE, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
@@ -326,11 +379,13 @@ public class FinalGame extends BaseGame {
 		createWorldAxes();
 		
 		Cylinder ground = new Cylinder();
-		ground.setRadius(15);
+		ground.setCullMode(CULL_MODE.NEVER);
+		ground.setRadius(100);
 		ground.setSlices(20);
 		ground.setSolid(true);
 		ground.setColor(Color.gray);
 		ground.rotate(90, new Vector3D(1, 0, 0));
+		ground.translate(0, 2f, 0);
 		addGameWorldObject(ground);
 	}
 
@@ -404,7 +459,7 @@ public class FinalGame extends BaseGame {
 		}
 		
 		camera1Controller.update(elapsedTimeMS);
-		camera2Controller.update(elapsedTimeMS);
+//		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 	}
 	
@@ -413,8 +468,6 @@ public class FinalGame extends BaseGame {
 	{
 		renderer.setCamera(camera1);
 		super.render();
-		renderer.setCamera(camera2);
-		super.render();		
 	}
 
 	@Override
