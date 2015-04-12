@@ -184,7 +184,7 @@ public class FinalGame extends BaseGame {
 
 	private void initTerrain() {
 //		HillHeightMap hhm = new HillHeightMap(50, 15, 15.0f, 16.0f,(byte)2, 12345);
-		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circleGradient.jpg");
+		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circle2.jpg");
 //		hhm.setHeightScale(0.1f);
 		 hillTerrain = createTerrainBlock(heightMap);
 		 // create texture and texture state to color the terrain
@@ -201,13 +201,13 @@ public class FinalGame extends BaseGame {
 	}
 
 	private TerrainBlock createTerrainBlock(ImageBasedHeightMap heightMap) {
-		float heightScale = 0.05f;
+		float heightScale = 0.1f;
 		Vector3D terrainScale = new Vector3D(1, heightScale, 1);
 		// use the size of the height map as the size of the terrain
 		int terrainSize = heightMap.getSize();
 		// specify terrain origin so heightmap (0,0) is at world origin
 		float cornerHeight = heightMap.getTrueHeightAtPoint(0, 0) * heightScale;
-		Point3D terrainOrigin = new Point3D(-25, 0.1f, -25);
+		Point3D terrainOrigin = new Point3D(-0, 0.0f, -0);
 		// create a terrain block using the height map
 		String name = "Terrain:" + heightMap.getClass().getSimpleName();
 		TerrainBlock tb = new TerrainBlock(name, terrainSize, terrainScale, heightMap.getHeightData(), terrainOrigin);
@@ -291,7 +291,7 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
 				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1);
+		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
 				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
@@ -385,7 +385,7 @@ public class FinalGame extends BaseGame {
 		ground.setSolid(true);
 		ground.setColor(Color.gray);
 		ground.rotate(90, new Vector3D(1, 0, 0));
-		ground.translate(0, 2f, 0);
+		ground.translate(50, 2f, 50);
 		addGameWorldObject(ground);
 	}
 

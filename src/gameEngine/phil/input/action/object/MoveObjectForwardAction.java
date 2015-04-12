@@ -28,6 +28,9 @@ public class MoveObjectForwardAction implements IAction {
 		float z = (float) avLoc.getZ();
 //		System.out.println(terrain.getHeight(x, z));
 		float terHeight = terrain.getHeight(x,z);
+		if(! (terHeight > 0)){
+			terHeight = 0;
+		}
 		float desiredHeight = terHeight + (float)terrain.getOrigin().getY() + 1f;
 //		System.out.println(desiredHeight);
 		object.getLocalTranslation().setElementAt(1, 3, desiredHeight);
