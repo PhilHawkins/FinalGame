@@ -13,14 +13,12 @@ import sage.networking.client.GameConnectionClient;
 public class FinalGameClient extends GameConnectionClient {
 	private FinalGame game;
 	private UUID id;
-	private Vector<GhostAvatar> ghostAvatars;
 
 	public FinalGameClient(InetAddress remoteAddr, int remotePort, ProtocolType protocolType, FinalGame game)
 			throws IOException {
 		super(remoteAddr, remotePort, protocolType);
 		this.game = game;
 		this.id = UUID.randomUUID();
-		this.ghostAvatars = new Vector<GhostAvatar>();
 	}
 	
 	protected void processPacket (Object msg) // override
@@ -32,12 +30,12 @@ public class FinalGameClient extends GameConnectionClient {
 			if(msgTokens[1].compareTo("success") == 0)
 			{ 
 				game.setIsConnected(true);
+				sendCreateMessage(game.getPlayerPosition());
 			}
-			sendCreateMessage(game.getPlayerPosition());
-		}
-		if(msgTokens[1].compareTo("failure") == 0)
-		{
-			game.setIsConnected(false);
+			else if(msgTokens[1].compareTo("failure") == 0)
+			{
+				game.setIsConnected(false);
+			}
 		}
 		if(msgTokens[0].compareTo("bye") == 0) // receive “bye”
 		{ // format: bye, remoteId
@@ -48,7 +46,7 @@ public class FinalGameClient extends GameConnectionClient {
 		{ // format: create, remoteId, x,y,z or dsfr, remoteId, x,y,z
 			UUID ghostID = UUID.fromString(msgTokens[1]);
 			String[] ghostPosition = {msgTokens[2], msgTokens[3], msgTokens[4]};
-			game.updateGhostAvatar(ghostID, ghostPosition);
+			game.createGhostAvatar(ghostID, ghostPosition);
 		}
 		if(msgTokens[0].compareTo("create") == 0) // receive “create…”
 		{ // etc….. 
@@ -58,13 +56,15 @@ public class FinalGameClient extends GameConnectionClient {
 		}
 		if(msgTokens[0].compareTo("wsds") == 0) // receive “wants…”
 		{ // etc….. 
-
+			UUID remId = UUID.fromString(msgTokens[1]);
+			Vector3D playerPosition = game.getPlayerPosition();
+			sendDetailsForMessage(id, playerPosition);
 		}
 		if(msgTokens[0].compareTo("move") == 0) // receive “move”
 		{ // etc….. }
 			UUID ghostID = UUID.fromString(msgTokens[1]);
 			String[] ghostMovement = {msgTokens[2], msgTokens[3], msgTokens[4]};
-			game.moveGhostAvatar(ghostID, ghostMovement);
+			game.updateGhostAvatar(ghostID, ghostMovement);
 		}
 	}
 	
@@ -73,7 +73,7 @@ public class FinalGameClient extends GameConnectionClient {
 		try
 		 { 
 			String message = new String("create," + id.toString());
-			message += "," + pos.getX()+"," + pos.getY() + "," + pos.getZ();
+			message += "," + String.valueOf(pos.getX()) +"," + String.valueOf(pos.getY()) + "," + String.valueOf(pos.getZ());
 			sendPacket(message);
 		 }
 		 catch (IOException e) { 
@@ -102,15 +102,24 @@ public class FinalGameClient extends GameConnectionClient {
 			e.printStackTrace();
 		}
 	}
+	
 	public void sendDetailsForMessage(UUID remId, Vector3D pos)
 	{ // etc….. }
-		
+
+		String message = new String("dsfr," + id.toString() + "," + remId.toString());
+		message += "," + String.valueOf(pos.getX()) +"," + String.valueOf(pos.getY()) + "," + String.valueOf(pos.getZ());
+		try {
+			sendPacket(message);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	public void sendMoveMessage(Vector3D pos)
 	{ // etc….. }
-		String message = new String("create," + id.toString());
-		message += "," + pos.getX()+"," + pos.getY() + "," + pos.getZ();
+		String message = new String("move," + id.toString());
+		message += "," + pos.getX() +"," + pos.getY() + "," + pos.getZ();
 		try {
 			sendPacket(message);
 		} catch (IOException e) {

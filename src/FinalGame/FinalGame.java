@@ -22,9 +22,11 @@ import java.net.UnknownHostException;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
@@ -92,17 +94,19 @@ public class FinalGame extends BaseGame {
 	private ProtocolType serverProtocol;
 	
 	private FinalGameClient thisClient;
+	private boolean isConnected;
 	
-	private Vector<GhostAvatar> ghostAvatars;
+	private HashMap<UUID, GhostAvatar> ghostAvatars;
 	
 	public TerrainBlock hillTerrain;
 	
 	public FinalGame(String serverAddr, int sPort){
 		super();
+		isConnected = false;
 		this.serverAddress = serverAddr;
 		this.serverPort = sPort;
 		this.serverProtocol = ProtocolType.TCP;
-		ghostAvatars = new Vector<GhostAvatar>();
+		ghostAvatars = new HashMap<UUID, GhostAvatar>();
 		
 	}
 
@@ -287,11 +291,11 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, 
 				rotatePlayer1Right, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain);
+		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain, thisClient);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
 				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain);
+		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain, thisClient);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
 				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
@@ -386,7 +390,7 @@ public class FinalGame extends BaseGame {
 		ground.setColor(Color.gray);
 		ground.rotate(90, new Vector3D(1, 0, 0));
 		ground.translate(50, 2f, 50);
-		addGameWorldObject(ground);
+		//addGameWorldObject(ground);
 	}
 
 	private void createWorldAxes() {
@@ -454,13 +458,15 @@ public class FinalGame extends BaseGame {
 		cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
 		skyBox.setLocalTranslation(cameraTranslation);		
 		
-		if(thisClient != null){
-			thisClient.processPackets();
-		}
-		
 		camera1Controller.update(elapsedTimeMS);
 //		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
+		
+		if(thisClient != null){
+			thisClient.processPackets();
+			//thisClient.sendMoveMessage(getPlayerPosition());
+		}
+		
 	}
 	
 	@Override
@@ -485,54 +491,46 @@ public class FinalGame extends BaseGame {
 				e.printStackTrace(); 
 			}
 		} 
-		
 
 	}
 
 	public void setIsConnected(boolean b) {
 		// TODO Auto-generated method stub
-		
+		isConnected = b;
 	}
 
 	public Vector3D getPlayerPosition() {
 		// TODO Auto-generated method stub
-		Vector3D playerPos = new Vector3D();
-		Matrix3D worldtrans = player1.getWorldTranslation();
-		playerPos.mult(worldtrans);
-		return playerPos;
+		
+		Vector3D pos = player1.getWorldTransform().getCol(3);
+		
+		return new Vector3D(pos.getX(), pos.getY(), pos.getZ());
 	}
 
 	public void removeGhostAvatar(UUID ghostID) {
 		// TODO Auto-generated method stub
-		for(GhostAvatar g : ghostAvatars){
-			if(g.getID() == ghostID){
-				ghostAvatars.remove(g);
-			}
+
+		if(ghostAvatars.containsKey(ghostID)){
+			removeGameWorldObject(ghostAvatars.get(ghostID).getSceneNode());
+			ghostAvatars.remove(ghostID);
 		}
 	}
 
 	public void createGhostAvatar(UUID ghostID, String[] ghostPosition) {
 		// TODO Auto-generated method stub
 		GhostAvatar newAvatar = new GhostAvatar(ghostID, ghostPosition);
-		ghostAvatars.add(newAvatar);
+		ghostAvatars.put(ghostID, newAvatar);
+		addGameWorldObject(newAvatar.getSceneNode());
 	}
 
 	public void updateGhostAvatar(UUID ghostID, String[] ghostPosition) {
 		// TODO Auto-generated method stub
-		for(GhostAvatar g : ghostAvatars){
-			if(g.getID() == ghostID){
-				g.updatePosition(ghostPosition);
-			}
+		GhostAvatar ghost = ghostAvatars.get(ghostID);
+		if(ghost != null){
+			ghost.setPosition(ghostPosition);
 		}
 	}
 
-	public void moveGhostAvatar(UUID ghostID, String[] ghostMovement) {
-		// TODO Auto-generated method stub
-		for(GhostAvatar g : ghostAvatars){
-			if(g.getID() == ghostID){
-				g.move(ghostMovement);
-			}
-		}
-	}
+
 
 }

@@ -5,6 +5,7 @@ import graphicslib3D.Vector3D;
 
 import java.util.UUID;
 
+import sage.scene.SceneNode;
 import sage.scene.shape.Pyramid;
 
 public class GhostAvatar {
@@ -26,10 +27,14 @@ public class GhostAvatar {
 		thisAvatar.translate(Float.parseFloat(ghostMovement[0]), Float.parseFloat(ghostMovement[1]), Float.parseFloat(ghostMovement[2]));
 	}
 
-	public void updatePosition(String[] ghostPosition) {
+	public void setPosition(String[] ghostPosition) {
 		// TODO Auto-generated method stub
 		Matrix3D worldCoords = new Matrix3D();
 		worldCoords.translate(Float.parseFloat(ghostPosition[0]), Float.parseFloat(ghostPosition[1]), Float.parseFloat(ghostPosition[2]));
 		thisAvatar.setWorldTranslation(worldCoords);
+	}
+	
+	public SceneNode getSceneNode(){
+		return thisAvatar;
 	}
 }

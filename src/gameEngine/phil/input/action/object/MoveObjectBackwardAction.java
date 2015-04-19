@@ -1,5 +1,6 @@
 package gameEngine.phil.input.action.object;
 
+import gameEngine.networking.FinalGameClient;
 import graphicslib3D.Matrix3D;
 import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
@@ -11,10 +12,12 @@ import sage.terrain.TerrainBlock;
 public class MoveObjectBackwardAction implements IAction {
 	private SceneNode object;
 	private TerrainBlock terrain;
+	private FinalGameClient client;
 	
-	public MoveObjectBackwardAction(SceneNode o, TerrainBlock ter){
+	public MoveObjectBackwardAction(SceneNode o, TerrainBlock ter, FinalGameClient thisClient){
 		object = o;
 		terrain = ter;
+		client = thisClient;
 	}
 	
 	@Override
@@ -35,6 +38,10 @@ public class MoveObjectBackwardAction implements IAction {
 		float desiredHeight = terHeight + (float)terrain.getOrigin().getY() + 1f;
 //		System.out.println(desiredHeight);
 		object.getLocalTranslation().setElementAt(1, 3, desiredHeight);
+		
+		Vector3D pos = object.getWorldTransform().getCol(3);
+		
+		client.sendMoveMessage(new Vector3D(pos.getX(), pos.getY(), pos.getZ()));
 	}
 
 }
