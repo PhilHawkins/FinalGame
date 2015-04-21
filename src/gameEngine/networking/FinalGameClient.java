@@ -45,8 +45,10 @@ public class FinalGameClient extends GameConnectionClient {
 		if (msgTokens[0].compareTo("dsfr") == 0 ) // receive “details for”
 		{ // format: create, remoteId, x,y,z or dsfr, remoteId, x,y,z
 			UUID ghostID = UUID.fromString(msgTokens[1]);
-			String[] ghostPosition = {msgTokens[2], msgTokens[3], msgTokens[4]};
-			game.createGhostAvatar(ghostID, ghostPosition);
+			if(!game.getGhost(ghostID)){
+				String[] ghostPosition = {msgTokens[2], msgTokens[3], msgTokens[4]};
+				game.createGhostAvatar(ghostID, ghostPosition);
+			}
 		}
 		if(msgTokens[0].compareTo("create") == 0) // receive “create…”
 		{ // etc….. 
@@ -58,7 +60,7 @@ public class FinalGameClient extends GameConnectionClient {
 		{ // etc….. 
 			UUID remId = UUID.fromString(msgTokens[1]);
 			Vector3D playerPosition = game.getPlayerPosition();
-			sendDetailsForMessage(id, playerPosition);
+			sendDetailsForMessage(remId, playerPosition);
 		}
 		if(msgTokens[0].compareTo("move") == 0) // receive “move”
 		{ // etc….. }

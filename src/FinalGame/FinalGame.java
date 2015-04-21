@@ -530,6 +530,15 @@ public class FinalGame extends BaseGame {
 			ghost.setPosition(ghostPosition);
 		}
 	}
+	
+	public boolean getGhost(UUID id){
+		if(ghostAvatars.containsKey(id)){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
 
 
 

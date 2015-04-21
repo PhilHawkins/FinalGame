@@ -31,7 +31,8 @@ public class GhostAvatar {
 		// TODO Auto-generated method stub
 		Matrix3D worldCoords = new Matrix3D();
 		worldCoords.translate(Float.parseFloat(ghostPosition[0]), Float.parseFloat(ghostPosition[1]), Float.parseFloat(ghostPosition[2]));
-		thisAvatar.setWorldTranslation(worldCoords);
+		thisAvatar.setLocalTranslation(worldCoords);
+		thisAvatar.updateWorldBound();
 	}
 	
 	public SceneNode getSceneNode(){
