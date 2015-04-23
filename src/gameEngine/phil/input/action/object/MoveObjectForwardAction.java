@@ -1,5 +1,6 @@
 package gameEngine.phil.input.action.object;
 
+import FinalGame.FinalGame;
 import gameEngine.networking.FinalGameClient;
 import graphicslib3D.Matrix3D;
 import graphicslib3D.Point3D;
@@ -13,11 +14,13 @@ public class MoveObjectForwardAction implements IAction {
 	private SceneNode object;
 	private TerrainBlock terrain;
 	private FinalGameClient client;
+	private FinalGame game;
 	
-	public MoveObjectForwardAction(SceneNode o, TerrainBlock ter, FinalGameClient thisClient){
+	public MoveObjectForwardAction(SceneNode o, TerrainBlock ter, FinalGameClient thisClient, FinalGame g){
 		object = o;
 		terrain = ter;
 		client = thisClient;
+		game = g;
 	}
 	@Override
 	public void performAction(float time, Event e) {
@@ -32,7 +35,7 @@ public class MoveObjectForwardAction implements IAction {
 //		System.out.println(terrain.getHeight(x, z));
 		float terHeight = terrain.getHeight(x,z);
 		if(! (terHeight > 0)){
-			terHeight = 0;
+			terHeight = game.getGroundHeight();
 		}
 		float desiredHeight = terHeight + (float)terrain.getOrigin().getY() + 1f;
 //		System.out.println(desiredHeight);

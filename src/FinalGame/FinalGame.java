@@ -45,6 +45,9 @@ import sage.input.InputManager;
 import sage.input.IInputManager.INPUT_ACTION_TYPE;
 import sage.input.action.IAction;
 import sage.networking.IGameConnection.ProtocolType;
+import sage.physics.IPhysicsEngine;
+import sage.physics.IPhysicsObject;
+import sage.physics.PhysicsEngineFactory;
 import sage.renderer.IRenderer;
 import sage.scene.Group;
 import sage.scene.SceneNode;
@@ -63,7 +66,40 @@ import sage.terrain.TerrainBlock;
 import sage.texture.Texture;
 import sage.texture.TextureManager;
 
+
+import javax.vecmath.Quat4f;
+import javax.vecmath.Vector3f;
+import com.bulletphysics.collision.broadphase.AxisSweep3;
+import com.bulletphysics.collision.broadphase.BroadphaseInterface;
+import com.bulletphysics.collision.dispatch.CollisionConfiguration;
+import com.bulletphysics.collision.dispatch.CollisionDispatcher;
+import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
+import com.bulletphysics.collision.shapes.CollisionShape;
+import com.bulletphysics.collision.shapes.SphereShape;
+import com.bulletphysics.collision.shapes.StaticPlaneShape;
+import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+import com.bulletphysics.dynamics.DynamicsWorld;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.dynamics.constraintsolver.ConstraintSolver;
+import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.linearmath.Transform;
+
+
 public class FinalGame extends BaseGame {
+	private CollisionDispatcher collDispatcher;
+	 private BroadphaseInterface broadPhaseHandler;
+	 private ConstraintSolver solver;
+	 private CollisionConfiguration collConfig;
+	 private RigidBody physicsGround;
+	 private RigidBody physicsBall;
+	 private int maxProxies = 1024;
+	 private Vector3f worldAabbMin = new Vector3f(-10000, -10000, -10000);
+	 private Vector3f worldAabbMax = new Vector3f(10000, 10000, 10000);
+	 private DynamicsWorld physicsWorld;
+	
+	
 	
 	private IDisplaySystem display;
 	private IRenderer renderer;
@@ -84,7 +120,12 @@ public class FinalGame extends BaseGame {
 	private Group scene;
 	private OrbitCameraController camera1Controller, camera1GPController;
 	private String keyboardName, gamepadName;
+	private HashMap<UUID, GhostAvatar> ghostAvatars;
+	
 	SkyBox skyBox;
+	private Cylinder ground;
+	public TerrainBlock hillTerrain;	
+	private float groundHeight;
 	
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
 	private static String scriptsDirectory = "." + File.separator + "bin" + File.separator + "scripts" + File.separator;
@@ -92,13 +133,15 @@ public class FinalGame extends BaseGame {
 	private String serverAddress;
 	private int serverPort;
 	private ProtocolType serverProtocol;
-	
 	private FinalGameClient thisClient;
 	private boolean isConnected;
 	
-	private HashMap<UUID, GhostAvatar> ghostAvatars;
+	private IPhysicsEngine physicsEngine;
+	private IPhysicsObject ballP, groundP;
+	private boolean running;
+	private float gameTime;
+	private float dropTime;
 	
-	public TerrainBlock hillTerrain;
 	
 	public FinalGame(String serverAddr, int sPort){
 		super();
@@ -107,7 +150,7 @@ public class FinalGame extends BaseGame {
 		this.serverPort = sPort;
 		this.serverProtocol = ProtocolType.TCP;
 		ghostAvatars = new HashMap<UUID, GhostAvatar>();
-		
+		dropTime = 0;
 	}
 
 	protected void initSystem()
@@ -184,7 +227,61 @@ public class FinalGame extends BaseGame {
 		initGameElements();
 		//linkActionsToControls();
 		createGameWorldObjects();
+
+		gameTime = 0;
+		
+		createPhysicsWorld();
 	}
+	
+	private void createPhysicsWorld()
+	 { 
+		Transform myTransform ;
+		 // define the broad-phase collision to be used (Sweep-and-Prune)
+		 broadPhaseHandler = new AxisSweep3(worldAabbMin, worldAabbMax, maxProxies);
+		 // set up the narrow-phase collision handler ("dispatcher")
+		 collConfig = new DefaultCollisionConfiguration();
+		 collDispatcher = new CollisionDispatcher(collConfig);
+		 // create a constraint solver
+		 solver = new SequentialImpulseConstraintSolver();
+		 // create a physics world utilizing the above objects
+		 physicsWorld = new DiscreteDynamicsWorld(collDispatcher, broadPhaseHandler, solver, collConfig);
+		 physicsWorld.setGravity(new Vector3f(0, -10, 0));
+		 // define physicsGround plane: normal vector = 'up', dist from origin = 1
+		 CollisionShape groundShape = new StaticPlaneShape(new Vector3f(0, 1, 0), groundHeight + 1);
+		 // set position and orientation of physicsGround's transform
+		 myTransform = new Transform();
+		 myTransform.origin.set(new Vector3f(0, -1, 0));
+		 myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		 // define construction info for a 'physicsGround' rigid body
+		 DefaultMotionState groundMotionState = new DefaultMotionState(myTransform);
+		 RigidBodyConstructionInfo groundCI = new RigidBodyConstructionInfo(0, groundMotionState, groundShape, new Vector3f(0, 0, 0));
+		 groundCI.restitution = 0.8f;
+		 // create the physicsGround rigid body and add it to the physics world
+		 physicsGround = new RigidBody(groundCI);
+		 physicsWorld.addRigidBody(physicsGround);
+		 // define a collision shape for a physicsBall
+		 CollisionShape fallShape = new SphereShape(1);
+		 // define a transform for position and orientation of ball collision shape
+		 myTransform = new Transform();
+		 myTransform.origin.set(new Vector3f(0, 20, 5));
+		 myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		 // define the parameters of the collision shape
+		 DefaultMotionState fallMotionState =
+		 new DefaultMotionState(myTransform);
+		 float myFallMass = 1;
+		 Vector3f myFallInertia = new Vector3f(0, 0, 0);
+		 fallShape.calculateLocalInertia(myFallMass, myFallInertia);
+		 // define construction info for a 'physicsBall' rigid body
+		 RigidBodyConstructionInfo fallRigidBodyCI = new
+		 RigidBodyConstructionInfo(myFallMass,fallMotionState,fallShape,myFallInertia);
+		 fallRigidBodyCI.restitution = 0.8f;
+		 // create the physicsBall rigid body and add it to the physics world
+		 physicsBall = new RigidBody(fallRigidBodyCI);
+		 physicsWorld.addRigidBody(physicsBall);
+	 }
+
+	
+	 
 
 	private void initTerrain() {
 //		HillHeightMap hhm = new HillHeightMap(50, 15, 15.0f, 16.0f,(byte)2, 12345);
@@ -229,8 +326,9 @@ public class FinalGame extends BaseGame {
 	private void createPlayers() {
 		player1 = new Sphere();
 		player1.scale(.5f, .5f, .5f);
-		player1.translate(0, 3f, 5);
+		player1.translate(0, 20f, 5);
 		player1.rotate(180, new Vector3D(0, 1, 0));
+		player1.updateGeometricState(1f, true);
 		//addGameWorldObject(player1);
 		scene.addChild(player1);
 	
@@ -291,11 +389,11 @@ public class FinalGame extends BaseGame {
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, 
 				rotatePlayer1Right, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain, thisClient);
+		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain, thisClient, this);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
 				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
-		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain, thisClient);
+		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain, thisClient, this);
 		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
 				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		
@@ -382,15 +480,18 @@ public class FinalGame extends BaseGame {
 	private void createGameWorldObjects() {
 		createWorldAxes();
 		
-		Cylinder ground = new Cylinder();
+		ground = new Cylinder("ground");
 		ground.setCullMode(CULL_MODE.NEVER);
 		ground.setRadius(100);
+		ground.setHeight(70f);
 		ground.setSlices(20);
 		ground.setSolid(true);
 		ground.setColor(Color.gray);
 		ground.rotate(90, new Vector3D(1, 0, 0));
-		ground.translate(50, 2f, 50);
-		//addGameWorldObject(ground);
+		ground.translate(50, 5f, 50);
+		ground.setShowBound(true);
+		groundHeight = 5f;
+		addGameWorldObject(ground);
 	}
 
 	private void createWorldAxes() {
@@ -453,18 +554,55 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void update(float elapsedTimeMS)
 	{		
+		
+		gameTime += elapsedTimeMS;
+		if(gameTime > 3000){
+			running = true;
+		}
+		if(gameTime > 8000){
+			running = false;
+		}
+		if(running){
+			 { physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8 steps
+			 // read and display the updated physicsBall position
+			 Transform pBallTransform = new Transform();
+			 physicsBall.getMotionState().getWorldTransform(pBallTransform);
+			 //update the graphics ball location from the physics ball
+			 float[] vals = new float[16];
+			 pBallTransform.getOpenGLMatrix(vals);
+			 Matrix3D gBallXform = new Matrix3D(vals);
+			 player1.setLocalTranslation(gBallXform);
+				dropTime += elapsedTimeMS;
+				if(dropTime > 50){
+					thisClient.sendMoveMessage(getPlayerPosition());
+					dropTime = 0;
+				}
+			 }
+
+//			Matrix3D mat;
+//			Vector3D translateVec;
+//			physicsEngine.update(1f);
+//			for (SceneNode s : getGameWorld())
+//			{ 
+//				if (s.getPhysicsObject() != null)
+//				{ 
+//					mat = new Matrix3D(s.getPhysicsObject().getTransform());
+//					translateVec = mat.getCol(3);
+//					s.getLocalTranslation().setCol(3,translateVec);
+//					// should also get and apply rotation
+//				}
+//			}
+		}
 		Point3D cameraLocation = camera1.getLocation();
 		Matrix3D cameraTranslation = new Matrix3D();
 		cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
 		skyBox.setLocalTranslation(cameraTranslation);		
 		
 		camera1Controller.update(elapsedTimeMS);
-//		camera2Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 		
 		if(thisClient != null){
 			thisClient.processPackets();
-			//thisClient.sendMoveMessage(getPlayerPosition());
 		}
 		
 	}
@@ -538,6 +676,10 @@ public class FinalGame extends BaseGame {
 		else{
 			return false;
 		}
+	}
+	
+	public float getGroundHeight(){
+		return groundHeight;
 	}
 
 

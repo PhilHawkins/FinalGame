@@ -17,5 +17,6 @@
 	<classpathentry kind="lib" path="C:/javagaming/jogl/gluegen-rt-natives-windows-amd64.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-all-natives-windows-amd64.jar"/>
 	<classpathentry kind="lib" path="C:/javagaming/jogl/jogl-test.jar"/>
+	<classpathentry kind="lib" path="C:/javagaming/jbullet/jbullet.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
