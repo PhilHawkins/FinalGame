@@ -5,6 +5,6 @@ import FinalGame.FinalGame;
 public class Starter {
 
 	public static void main(String[] args) {
-		new FinalGame("127.0.0.1", 8080).start();
+		new FinalGame("127.0.0.1", 8090).start();
 	}
 }

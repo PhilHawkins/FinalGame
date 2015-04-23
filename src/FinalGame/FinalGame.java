@@ -44,6 +44,7 @@ import sage.input.IInputManager;
 import sage.input.InputManager;
 import sage.input.IInputManager.INPUT_ACTION_TYPE;
 import sage.input.action.IAction;
+import sage.model.loader.OBJLoader;
 import sage.networking.IGameConnection.ProtocolType;
 import sage.physics.IPhysicsEngine;
 import sage.physics.IPhysicsObject;
@@ -67,8 +68,10 @@ import sage.texture.Texture;
 import sage.texture.TextureManager;
 
 
+
 import javax.vecmath.Quat4f;
 import javax.vecmath.Vector3f;
+
 import com.bulletphysics.collision.broadphase.AxisSweep3;
 import com.bulletphysics.collision.broadphase.BroadphaseInterface;
 import com.bulletphysics.collision.dispatch.CollisionConfiguration;
@@ -123,6 +126,7 @@ public class FinalGame extends BaseGame {
 	private HashMap<UUID, GhostAvatar> ghostAvatars;
 	
 	SkyBox skyBox;
+	OBJLoader objectLoader;
 	private Cylinder ground;
 	public TerrainBlock hillTerrain;	
 	private float groundHeight;
@@ -130,6 +134,7 @@ public class FinalGame extends BaseGame {
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
 	private static String scriptsDirectory = "." + File.separator + "bin" + File.separator + "scripts" + File.separator;
 	
+	private static String modelsDirectory = "." + File.separator + "bin" + File.separator + "models" + File.separator;
 	private String serverAddress;
 	private int serverPort;
 	private ProtocolType serverProtocol;
@@ -321,11 +326,21 @@ public class FinalGame extends BaseGame {
 		
 		// For managing collisions
 		eventManager = EventManager.getInstance();
+		
+		// For loading Blender objects
+		objectLoader = new OBJLoader();
 	}
 
 	private void createPlayers() {
-		player1 = new Sphere();
-		player1.scale(.5f, .5f, .5f);
+		player1 = objectLoader.loadModel(modelsDirectory + "world2.obj");
+		
+		Texture ballTexture = TextureManager.loadTexture2D(modelsDirectory + "worldMap.png");
+		TextureState ballTextureState = (TextureState)renderer.createRenderState(RenderStateType.Texture);
+		ballTextureState.setTexture(ballTexture);
+		ballTextureState.setEnabled(true);
+		player1.setRenderState(ballTextureState);
+		
+		player1.scale(1f, 1f, 1f);
 		player1.translate(0, 20f, 5);
 		player1.rotate(180, new Vector3D(0, 1, 0));
 		player1.updateGeometricState(1f, true);
