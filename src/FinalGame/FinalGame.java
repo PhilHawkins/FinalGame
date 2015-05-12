@@ -234,6 +234,7 @@ public class FinalGame extends BaseGame {
 		createGameWorldObjects();
 
 		gameTime = 0;
+		dropTime = 0;
 		
 		createPhysicsWorld();
 	}
@@ -578,15 +579,16 @@ public class FinalGame extends BaseGame {
 			running = false;
 		}
 		if(running){
-			 { physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8 steps
-			 // read and display the updated physicsBall position
-			 Transform pBallTransform = new Transform();
-			 physicsBall.getMotionState().getWorldTransform(pBallTransform);
-			 //update the graphics ball location from the physics ball
-			 float[] vals = new float[16];
-			 pBallTransform.getOpenGLMatrix(vals);
-			 Matrix3D gBallXform = new Matrix3D(vals);
-			 player1.setLocalTranslation(gBallXform);
+			 { 
+				 physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8 steps
+				 // read and display the updated physicsBall position
+				 Transform pBallTransform = new Transform();
+				 physicsBall.getMotionState().getWorldTransform(pBallTransform);
+				 //update the graphics ball location from the physics ball
+				 float[] vals = new float[16];
+				 pBallTransform.getOpenGLMatrix(vals);
+				 Matrix3D gBallXform = new Matrix3D(vals);
+				 player1.setLocalTranslation(gBallXform);
 				dropTime += elapsedTimeMS;
 				if(dropTime > 50){
 					thisClient.sendMoveMessage(getPlayerPosition());
@@ -697,6 +699,13 @@ public class FinalGame extends BaseGame {
 		return groundHeight;
 	}
 
-
+	public void addGhostNPCtoWorld(GhostNPC npc) {
+		addGameWorldObject(npc.getBody());
+	}
+	
+	public float getTerrainHeightAtLoc(float x, float y){
+		return hillTerrain.getHeight(x, y);
+	}
+	
 
 }

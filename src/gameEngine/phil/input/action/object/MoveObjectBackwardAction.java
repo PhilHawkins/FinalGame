@@ -35,9 +35,8 @@ public class MoveObjectBackwardAction implements IAction {
 		float z = (float) avLoc.getZ();
 //		System.out.println(terrain.getHeight(x, z));
 		float terHeight = terrain.getHeight(x,z);
-		float groundHeight = game.getGroundHeight();
-		if(terHeight < groundHeight){
-			terHeight = groundHeight;
+		if(! (terHeight > 2)){
+			terHeight = game.getGroundHeight();
 		}
 		float desiredHeight = terHeight + (float)terrain.getOrigin().getY() + 1f;
 //		System.out.println(desiredHeight);

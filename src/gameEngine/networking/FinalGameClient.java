@@ -1,5 +1,6 @@
 package gameEngine.networking;
 
+import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
 
 import java.io.IOException;
@@ -8,23 +9,27 @@ import java.util.UUID;
 import java.util.Vector;
 
 import FinalGame.FinalGame;
+import FinalGame.GhostNPC;
 import sage.networking.client.GameConnectionClient;
 
 public class FinalGameClient extends GameConnectionClient {
 	private FinalGame game;
 	private UUID id;
+	Vector<GhostNPC> ghostNPCs;
 
 	public FinalGameClient(InetAddress remoteAddr, int remotePort, ProtocolType protocolType, FinalGame game)
 			throws IOException {
 		super(remoteAddr, remotePort, protocolType);
 		this.game = game;
 		this.id = UUID.randomUUID();
+		ghostNPCs = new Vector<GhostNPC>();
 	}
 	
 	protected void processPacket (Object msg) // override
 	{ // extract incoming message into substrings. Then process:
 		 String message = (String)msg;
 		 String[] msgTokens = message.split(",");
+		 
 		 if(msgTokens[0].compareTo("join") == 0) // receive “join”
 		 { // format: join, success or join, failure
 			if(msgTokens[1].compareTo("success") == 0)
@@ -68,6 +73,38 @@ public class FinalGameClient extends GameConnectionClient {
 			String[] ghostMovement = {msgTokens[2], msgTokens[3], msgTokens[4]};
 			game.updateGhostAvatar(ghostID, ghostMovement);
 		}
+		 if(msgTokens[0].compareTo("mnpc") == 0)
+		 { 
+//			 int ghostID = Integer.parseInt(msgTokens[1]);
+			 Vector3D ghostPosition = new Vector3D();
+			 ghostPosition.setX(Double.parseDouble(msgTokens[1]));
+			 ghostPosition.setY(Double.parseDouble(msgTokens[2]));
+			 ghostPosition.setZ(Double.parseDouble(msgTokens[3]));
+			 updateGhostNPC(0, ghostPosition);
+			 
+			 Vector3D secondGhostPosition = new Vector3D();
+			 secondGhostPosition.setX(Double.parseDouble(msgTokens[4]));
+			 secondGhostPosition.setY(Double.parseDouble(msgTokens[5]));
+			 secondGhostPosition.setZ(Double.parseDouble(msgTokens[6]));
+			 updateGhostNPC(1, ghostPosition);
+		 }
+		 if(msgTokens[0].compareTo("npcds") == 0){
+			 Vector3D firstLoc = new Vector3D();
+			 Vector3D secondLoc = new Vector3D();
+			 
+			 firstLoc.setX(Float.valueOf(msgTokens[1]));
+			 firstLoc.setY(Float.valueOf(msgTokens[2]));
+			 firstLoc.setZ(Float.valueOf(msgTokens[3]));
+			 
+			 createNPC(0, firstLoc);
+			 
+			 secondLoc.setX(Float.valueOf(msgTokens[4]));
+			 secondLoc.setX(Float.valueOf(msgTokens[5]));
+			 secondLoc.setX(Float.valueOf(msgTokens[6]));
+
+			 createNPC(1, secondLoc);
+		 }
+
 	}
 	
 	public void sendCreateMessage(Vector3D pos)
@@ -130,6 +167,33 @@ public class FinalGameClient extends GameConnectionClient {
 		}
 	}
 
+	private void createNPC(int id, Vector3D position){
+		GhostNPC newNPC = new GhostNPC(id, position);
+		ghostNPCs.add(newNPC);
+		addNPCtoGameWorld(newNPC);
+	}
+	
+	private void updateGhostNPC(int id, Vector3D position){
+		float x = (float) position.getX();
+		float z = (float) position.getZ();
+		float terHeight = game.getTerrainHeightAtLoc(x, z);
+		if(! (terHeight > 0)){
+			terHeight = game.getGroundHeight();
+		}
+		float desiredHeight = terHeight + 1f;
+//		System.out.println(desiredHeight);
+
+		position.setY(desiredHeight);
+		
+		
+		if(ghostNPCs.size() > id){
+			ghostNPCs.get(id).setPosition(position);
+		}
+	}
+
+	private void addNPCtoGameWorld(GhostNPC npc){
+		game.addGhostNPCtoWorld(npc);
+	}
 
 
 }
