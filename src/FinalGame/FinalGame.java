@@ -35,6 +35,13 @@ import javax.script.ScriptException;
 
 import net.java.games.input.Component.Identifier;
 import sage.app.BaseGame;
+import sage.audio.AudioManager;
+import sage.audio.AudioManagerFactory;
+import sage.audio.AudioResource;
+import sage.audio.AudioResourceType;
+import sage.audio.IAudioManager;
+import sage.audio.Sound;
+import sage.audio.SoundType;
 import sage.camera.ICamera;
 import sage.camera.JOGLCamera;
 import sage.display.IDisplaySystem;
@@ -66,6 +73,13 @@ import sage.terrain.ImageBasedHeightMap;
 import sage.terrain.TerrainBlock;
 import sage.texture.Texture;
 import sage.texture.TextureManager;
+
+
+
+
+
+
+
 
 
 
@@ -101,9 +115,7 @@ public class FinalGame extends BaseGame {
 	 private Vector3f worldAabbMin = new Vector3f(-10000, -10000, -10000);
 	 private Vector3f worldAabbMax = new Vector3f(10000, 10000, 10000);
 	 private DynamicsWorld physicsWorld;
-	
-	
-	
+		
 	private IDisplaySystem display;
 	private IRenderer renderer;
 	private IEventManager eventManager;
@@ -128,13 +140,15 @@ public class FinalGame extends BaseGame {
 	SkyBox skyBox;
 	OBJLoader objectLoader;
 	private Cylinder ground;
+	private Cylinder astronaut;
 	public TerrainBlock hillTerrain;	
 	private float groundHeight;
 	
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
 	private static String scriptsDirectory = "." + File.separator + "bin" + File.separator + "scripts" + File.separator;
-	
 	private static String modelsDirectory = "." + File.separator + "bin" + File.separator + "models" + File.separator;
+	private static String soundsDirectory = "." + File.separator + "bin" + File.separator + "sounds" + File.separator;
+	
 	private String serverAddress;
 	private int serverPort;
 	private ProtocolType serverProtocol;
@@ -146,6 +160,10 @@ public class FinalGame extends BaseGame {
 	private boolean running;
 	private float gameTime;
 	private float dropTime;
+	
+	// Sounds
+	IAudioManager audioManager;
+	Sound backgroundSound, astronautSound;
 	
 	
 	public FinalGame(String serverAddr, int sPort){
@@ -237,8 +255,55 @@ public class FinalGame extends BaseGame {
 		dropTime = 0;
 		
 		createPhysicsWorld();
+		initAudio();
 	}
 	
+	private void initAudio()
+	{
+		AudioResource audioResource1, audioResource2;
+		audioManager = AudioManagerFactory.createAudioManager("sage.audio.joal.JOALAudioManager");
+		
+		if (!audioManager.initialize())
+		{
+			System.out.println("Audio Manager Failed to Initialize!");
+			return;
+		}
+		
+		audioResource1 = audioManager.createAudioResource(soundsDirectory + "BackgroundMusic.wav", AudioResourceType.AUDIO_SAMPLE);
+		backgroundSound = new Sound(audioResource1, SoundType.SOUND_MUSIC, 100, true);
+		backgroundSound.initialize(audioManager);
+		backgroundSound.setMaxDistance(50.0f);
+		backgroundSound.setMinDistance(3.0f);
+		backgroundSound.setRollOff(5.0f);
+		backgroundSound.setLocation(new Point3D(0,0,0));
+		
+		audioResource2 = audioManager.createAudioResource(soundsDirectory + "Astronaut.wav", AudioResourceType.AUDIO_SAMPLE);
+		astronautSound = new Sound(audioResource2, SoundType.SOUND_EFFECT, 50, true);
+		astronautSound.initialize(audioManager);
+		astronautSound.setMaxDistance(20.0f);
+		astronautSound.setMinDistance(3.0f);
+		astronautSound.setRollOff(5.0f);
+		astronautSound.setLocation(new Point3D(astronaut.getWorldTranslation().getCol(3)));
+		
+		setEarParameters();
+		
+		backgroundSound.play();	
+		astronautSound.play();
+	}
+
+	private void setEarParameters()
+	{
+		Matrix3D avatarDirection = (Matrix3D)player1.getWorldRotation().clone();
+		float cameraAzimuth = (float)camera1Controller.getAzimuth();
+		avatarDirection.rotateY(180.0f - cameraAzimuth);
+		Vector3D cameraDirection = new Vector3D(0,0,1);
+		cameraDirection = cameraDirection.mult(avatarDirection);
+		
+		audioManager.getEar().setLocation(camera1.getLocation());
+		audioManager.getEar().setOrientation(cameraDirection, new Vector3D(0,1,0));
+		
+	}
+
 	private void createPhysicsWorld()
 	 { 
 		Transform myTransform ;
@@ -508,6 +573,16 @@ public class FinalGame extends BaseGame {
 		ground.setShowBound(true);
 		groundHeight = 5f;
 		addGameWorldObject(ground);
+		
+		astronaut = new Cylinder("astronaut");
+		//astronaut.setHeight(120f);
+		astronaut.translate(10, 55f, 50);
+		astronaut.setRadius(10);
+		astronaut.setHeight(10);
+		astronaut.setSolid(true);
+		astronaut.setShowBound(true);
+		astronaut.setColor(Color.white);
+		addGameWorldObject(astronaut);		
 	}
 
 	private void createWorldAxes() {
@@ -570,7 +645,6 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void update(float elapsedTimeMS)
 	{		
-		
 		gameTime += elapsedTimeMS;
 		if(gameTime > 3000){
 			running = true;
@@ -618,10 +692,14 @@ public class FinalGame extends BaseGame {
 		camera1Controller.update(elapsedTimeMS);
 		super.update(elapsedTimeMS);
 		
-		if(thisClient != null){
-			thisClient.processPackets();
-		}
+		backgroundSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
+		astronautSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
+		setEarParameters();
 		
+		if(thisClient != null)
+		{
+			thisClient.processPackets();
+		}		
 	}
 	
 	@Override
