@@ -1,12 +1,12 @@
 package FinalGame;
 
+import events.SinkEvent;
+import events.SinkListener;
 import gameEngine.actions.QuitGameAction;
 import gameEngine.networking.FinalGameClient;
 import gameEngine.networking.GhostAvatar;
-import gameEngine.phil.input.action.object.MoveObjectAction;
 import gameEngine.phil.input.action.object.MoveObjectBackwardAction;
 import gameEngine.phil.input.action.object.MoveObjectForwardAction;
-import gameEngine.phil.input.action.object.RotateObjectAction;
 import gameEngine.phil.input.action.object.RotateObjectLeft;
 import gameEngine.phil.input.action.object.RotateObjectRight;
 import gameEngine.phil.camera.OrbitCameraController;
@@ -15,27 +15,24 @@ import graphicslib3D.Point3D;
 import graphicslib3D.Vector3D;
 
 import java.awt.Color;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.UUID;
-import java.util.Vector;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import net.java.games.input.Component.Identifier;
 import sage.app.BaseGame;
-import sage.audio.AudioManager;
 import sage.audio.AudioManagerFactory;
 import sage.audio.AudioResource;
 import sage.audio.AudioResourceType;
@@ -52,36 +49,25 @@ import sage.input.InputManager;
 import sage.input.IInputManager.INPUT_ACTION_TYPE;
 import sage.input.action.IAction;
 import sage.model.loader.OBJLoader;
+import sage.model.loader.ogreXML.OgreXMLParser;
 import sage.networking.IGameConnection.ProtocolType;
 import sage.physics.IPhysicsEngine;
 import sage.physics.IPhysicsObject;
-import sage.physics.PhysicsEngineFactory;
 import sage.renderer.IRenderer;
 import sage.scene.Group;
+import sage.scene.HUDString;
+import sage.scene.Model3DTriMesh;
 import sage.scene.SceneNode;
 import sage.scene.SceneNode.CULL_MODE;
 import sage.scene.SkyBox;
-import sage.scene.SkyBox.Face;
 import sage.scene.shape.Cylinder;
 import sage.scene.shape.Line;
-import sage.scene.shape.Pyramid;
-import sage.scene.shape.Sphere;
 import sage.scene.state.RenderState.RenderStateType;
 import sage.scene.state.TextureState;
-import sage.terrain.HillHeightMap;
 import sage.terrain.ImageBasedHeightMap;
 import sage.terrain.TerrainBlock;
 import sage.texture.Texture;
 import sage.texture.TextureManager;
-
-
-
-
-
-
-
-
-
 
 import javax.vecmath.Quat4f;
 import javax.vecmath.Vector3f;
@@ -103,77 +89,126 @@ import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSo
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.Transform;
 
-
-public class FinalGame extends BaseGame {
+public class FinalGame extends BaseGame
+{
 	private CollisionDispatcher collDispatcher;
-	 private BroadphaseInterface broadPhaseHandler;
-	 private ConstraintSolver solver;
-	 private CollisionConfiguration collConfig;
-	 private RigidBody physicsGround;
-	 private RigidBody physicsBall;
-	 private int maxProxies = 1024;
-	 private Vector3f worldAabbMin = new Vector3f(-10000, -10000, -10000);
-	 private Vector3f worldAabbMax = new Vector3f(10000, 10000, 10000);
-	 private DynamicsWorld physicsWorld;
-		
+	private BroadphaseInterface broadPhaseHandler;
+	private ConstraintSolver solver;
+	private CollisionConfiguration collConfig;
+	private RigidBody physicsGround;
+	private RigidBody physicsBall;
+	private int maxProxies = 1024;
+	private Vector3f worldAabbMin = new Vector3f(-10000, -10000, -10000);
+	private Vector3f worldAabbMax = new Vector3f(10000, 10000, 10000);
+	private DynamicsWorld physicsWorld;
+
 	private IDisplaySystem display;
 	private IRenderer renderer;
 	private IEventManager eventManager;
 	private IInputManager inputManager;
-	
+
 	private boolean foundController;
-	
+
 	private IAction quitGameAction;
 	private IAction movePlayerForward, movePlayerBackward, movePlayerLeft, movePlayerRight;
 	private IAction p2movePlayerForwardBackward, p2movePlayerLeftRight;
 	private IAction orbitCameraLeft, orbitCameraRight, orbitCameraForward, orbitCameraBackward;
 	private IAction p2orbitCameraLeftRight, p2orbitCameraUpDown;
 	private IAction zoomInCamera, zoomOutCamera, p2ZoomInCamera, p2ZoomOutCamera;
-	
+
 	private ICamera camera1, camera2;
-	private SceneNode player1, player2;
+	private SceneNode player1;
+	private boolean IsPlayerAlive;
 	private Group scene;
 	private OrbitCameraController camera1Controller, camera1GPController;
 	private String keyboardName, gamepadName;
 	private HashMap<UUID, GhostAvatar> ghostAvatars;
-	
+
 	SkyBox skyBox;
 	OBJLoader objectLoader;
 	private Cylinder ground;
-	private Cylinder astronaut;
-	public TerrainBlock hillTerrain;	
+	public TerrainBlock hillTerrain;
 	private float groundHeight;
-	
+
 	private static String imagesDirectory = "." + File.separator + "bin" + File.separator + "images" + File.separator;
 	private static String scriptsDirectory = "." + File.separator + "bin" + File.separator + "scripts" + File.separator;
 	private static String modelsDirectory = "." + File.separator + "bin" + File.separator + "models" + File.separator;
 	private static String soundsDirectory = "." + File.separator + "bin" + File.separator + "sounds" + File.separator;
-	
+
 	private String serverAddress;
 	private int serverPort;
 	private ProtocolType serverProtocol;
 	private FinalGameClient thisClient;
 	private boolean isConnected;
-	
+
 	private IPhysicsEngine physicsEngine;
 	private IPhysicsObject ballP, groundP;
 	private boolean running;
 	private float gameTime;
 	private float dropTime;
 	
+	Group model;
+	Model3DTriMesh alien;
+
+	HUDString playersSunkString, timeRemainingString;
+	int timeElaspsed;
+	boolean IsDeathTime = false;
+	private static final int TimeUntilDeath = 10;
+	
+	private String planetChoice;
+
+	private int playersSunk;
+
 	// Sounds
 	IAudioManager audioManager;
-	Sound backgroundSound, astronautSound;
-	
-	
-	public FinalGame(String serverAddr, int sPort){
+	Sound backgroundSound, countdownSound;
+
+	public FinalGame(String serverAddr, int sPort)
+	{
 		super();
+		
+		planetChoice = getPlantetChoice();
+		
 		isConnected = false;
 		this.serverAddress = serverAddr;
 		this.serverPort = sPort;
 		this.serverProtocol = ProtocolType.TCP;
 		ghostAvatars = new HashMap<UUID, GhostAvatar>();
 		dropTime = 0;
+		playersSunk = 0;
+	}
+
+	private String getPlantetChoice()
+	{
+		int selectedPlanet = 1;
+		System.out.println("Select a planet:\n 1. Earth\n 2. Saturn\n 3. Mercury\n 4. Jupiter\n 5. Uranus\n 6. Venus\n 7. Neptune\n 8. Mars\n 9. Pluto");
+		Scanner scanner = new Scanner(System.in);
+		selectedPlanet = scanner.nextInt();
+		scanner.close();
+		
+		switch (selectedPlanet)
+		{
+		case 1:
+			return "earth.png";	
+		case 2:
+			return "saturn.jpg";
+		case 3:
+			return "mercury.jpeg";
+		case 4:
+			return "jupiter.jpeg";
+		case 5: 
+			return "uranus.jpg";
+		case 6: 
+			return "venus.jpeg";
+		case 7: 
+			return "neptune.jpg";
+		case 8:
+			return "mars.jpg";
+		case 9: 
+			return "pluto.jpeg";
+		default:
+			return "earth.png";
+		}
 	}
 
 	protected void initSystem()
@@ -190,7 +225,7 @@ public class FinalGame extends BaseGame {
 		ArrayList<SceneNode> gameWorld = new ArrayList<SceneNode>();
 		setGameWorld(gameWorld);
 	}
-	
+
 	private IDisplaySystem createDisplaySystem()
 	{
 		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, false, "sage.renderer.jogl.JOGLRenderer");
@@ -227,152 +262,170 @@ public class FinalGame extends BaseGame {
 	@Override
 	protected void initGame()
 	{
-		try
-		 { 
-			thisClient = new FinalGameClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this); 
+		 try
+		 {
+		 thisClient = new
+		 FinalGameClient(InetAddress.getByName(serverAddress), serverPort,
+		 serverProtocol, this);
 		 }
-		 catch (UnknownHostException e) { 
-			 e.printStackTrace(); 
-		}
-		 catch (IOException e) { 
-			 e.printStackTrace(); 
-		}
-		 
-		if (thisClient != null) 
-		{ 
-			thisClient.sendJoinMessage(); 
-		}
+		 catch (UnknownHostException e) {
+		 e.printStackTrace();
+		 }
+		 catch (IOException e) {
+		 e.printStackTrace();
+		 }
 		
+		 if (thisClient != null)
+		 {
+		 thisClient.sendJoinMessage();
+		 }
+
 		createScene();
 		createEssentialObjects();
 		createPlayers();
+		createPlayerHUDs();
 		initTerrain();
 		initGameElements();
-		//linkActionsToControls();
+		// linkActionsToControls();
 		createGameWorldObjects();
 
 		gameTime = 0;
 		dropTime = 0;
-		
+
 		createPhysicsWorld();
 		initAudio();
 	}
-	
+
+	private void createPlayerHUDs()
+	{
+		playersSunkString = new HUDString("Players Sunk: 0");
+		playersSunkString.setLocation(0.01, 0.06);
+		playersSunkString.setColor(Color.YELLOW);
+		playersSunkString.setRenderMode(sage.scene.SceneNode.RENDER_MODE.ORTHO);
+		playersSunkString.setCullMode(sage.scene.SceneNode.CULL_MODE.NEVER);
+		camera1.addToHUD(playersSunkString);
+
+		timeRemainingString = new HUDString("Time Until Death: " + TimeUntilDeath + " Seconds");
+		timeRemainingString.setLocation(.85, 0.06);
+		timeRemainingString.setRenderMode(sage.scene.SceneNode.RENDER_MODE.ORTHO);
+		timeRemainingString.setCullMode(sage.scene.SceneNode.CULL_MODE.NEVER);
+		timeRemainingString.setColor(Color.YELLOW);
+		camera1.addToHUD(timeRemainingString);
+	}
+
 	private void initAudio()
 	{
 		AudioResource audioResource1, audioResource2;
 		audioManager = AudioManagerFactory.createAudioManager("sage.audio.joal.JOALAudioManager");
-		
+
 		if (!audioManager.initialize())
 		{
 			System.out.println("Audio Manager Failed to Initialize!");
 			return;
 		}
-		
+
 		audioResource1 = audioManager.createAudioResource(soundsDirectory + "BackgroundMusic.wav", AudioResourceType.AUDIO_SAMPLE);
 		backgroundSound = new Sound(audioResource1, SoundType.SOUND_MUSIC, 100, true);
 		backgroundSound.initialize(audioManager);
 		backgroundSound.setMaxDistance(50.0f);
 		backgroundSound.setMinDistance(3.0f);
 		backgroundSound.setRollOff(5.0f);
-		backgroundSound.setLocation(new Point3D(0,0,0));
-		
-		audioResource2 = audioManager.createAudioResource(soundsDirectory + "Astronaut.wav", AudioResourceType.AUDIO_SAMPLE);
-		astronautSound = new Sound(audioResource2, SoundType.SOUND_EFFECT, 50, true);
-		astronautSound.initialize(audioManager);
-		astronautSound.setMaxDistance(20.0f);
-		astronautSound.setMinDistance(3.0f);
-		astronautSound.setRollOff(5.0f);
-		astronautSound.setLocation(new Point3D(astronaut.getWorldTranslation().getCol(3)));
-		
+		backgroundSound.setLocation(new Point3D(0, 0, 0));
+
+		audioResource2 = audioManager.createAudioResource(soundsDirectory + "Countdown.wav", AudioResourceType.AUDIO_SAMPLE);
+		countdownSound = new Sound(audioResource2, SoundType.SOUND_EFFECT, 50, false);
+		countdownSound.initialize(audioManager);
+		countdownSound.setMaxDistance(20.0f);
+		countdownSound.setMinDistance(3.0f);
+		countdownSound.setRollOff(5.0f);
+		countdownSound.setLocation(new Point3D(0, 0, 0));
+
 		setEarParameters();
-		
-		backgroundSound.play();	
-		astronautSound.play();
+
+		backgroundSound.play();
+		countdownSound.play();
 	}
 
 	private void setEarParameters()
 	{
-		Matrix3D avatarDirection = (Matrix3D)player1.getWorldRotation().clone();
-		float cameraAzimuth = (float)camera1Controller.getAzimuth();
+		Matrix3D avatarDirection = (Matrix3D) player1.getWorldRotation().clone();
+		float cameraAzimuth = (float) camera1Controller.getAzimuth();
 		avatarDirection.rotateY(180.0f - cameraAzimuth);
-		Vector3D cameraDirection = new Vector3D(0,0,1);
+		Vector3D cameraDirection = new Vector3D(0, 0, 1);
 		cameraDirection = cameraDirection.mult(avatarDirection);
-		
+
 		audioManager.getEar().setLocation(camera1.getLocation());
-		audioManager.getEar().setOrientation(cameraDirection, new Vector3D(0,1,0));
-		
+		audioManager.getEar().setOrientation(cameraDirection, new Vector3D(0, 1, 0));
+
 	}
 
 	private void createPhysicsWorld()
-	 { 
-		Transform myTransform ;
-		 // define the broad-phase collision to be used (Sweep-and-Prune)
-		 broadPhaseHandler = new AxisSweep3(worldAabbMin, worldAabbMax, maxProxies);
-		 // set up the narrow-phase collision handler ("dispatcher")
-		 collConfig = new DefaultCollisionConfiguration();
-		 collDispatcher = new CollisionDispatcher(collConfig);
-		 // create a constraint solver
-		 solver = new SequentialImpulseConstraintSolver();
-		 // create a physics world utilizing the above objects
-		 physicsWorld = new DiscreteDynamicsWorld(collDispatcher, broadPhaseHandler, solver, collConfig);
-		 physicsWorld.setGravity(new Vector3f(0, -10, 0));
-		 // define physicsGround plane: normal vector = 'up', dist from origin = 1
-		 CollisionShape groundShape = new StaticPlaneShape(new Vector3f(0, 1, 0), groundHeight + 1);
-		 // set position and orientation of physicsGround's transform
-		 myTransform = new Transform();
-		 myTransform.origin.set(new Vector3f(0, -1, 0));
-		 myTransform.setRotation(new Quat4f(0, 0, 0, 1));
-		 // define construction info for a 'physicsGround' rigid body
-		 DefaultMotionState groundMotionState = new DefaultMotionState(myTransform);
-		 RigidBodyConstructionInfo groundCI = new RigidBodyConstructionInfo(0, groundMotionState, groundShape, new Vector3f(0, 0, 0));
-		 groundCI.restitution = 0.8f;
-		 // create the physicsGround rigid body and add it to the physics world
-		 physicsGround = new RigidBody(groundCI);
-		 physicsWorld.addRigidBody(physicsGround);
-		 // define a collision shape for a physicsBall
-		 CollisionShape fallShape = new SphereShape(1);
-		 // define a transform for position and orientation of ball collision shape
-		 myTransform = new Transform();
-		 myTransform.origin.set(new Vector3f(0, 20, 5));
-		 myTransform.setRotation(new Quat4f(0, 0, 0, 1));
-		 // define the parameters of the collision shape
-		 DefaultMotionState fallMotionState =
-		 new DefaultMotionState(myTransform);
-		 float myFallMass = 1;
-		 Vector3f myFallInertia = new Vector3f(0, 0, 0);
-		 fallShape.calculateLocalInertia(myFallMass, myFallInertia);
-		 // define construction info for a 'physicsBall' rigid body
-		 RigidBodyConstructionInfo fallRigidBodyCI = new
-		 RigidBodyConstructionInfo(myFallMass,fallMotionState,fallShape,myFallInertia);
-		 fallRigidBodyCI.restitution = 0.8f;
-		 // create the physicsBall rigid body and add it to the physics world
-		 physicsBall = new RigidBody(fallRigidBodyCI);
-		 physicsWorld.addRigidBody(physicsBall);
-	 }
-
-	
-	 
-
-	private void initTerrain() {
-//		HillHeightMap hhm = new HillHeightMap(50, 15, 15.0f, 16.0f,(byte)2, 12345);
-		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circle2.jpg");
-//		hhm.setHeightScale(0.1f);
-		 hillTerrain = createTerrainBlock(heightMap);
-		 // create texture and texture state to color the terrain
-		 TextureState groundState;
-		 Texture groundTexture = TextureManager.loadTexture2D(imagesDirectory + "/Craterscape.jpg");
-		 groundTexture.setApplyMode(sage.texture.Texture.ApplyMode.Replace);
-		 groundState = (TextureState) display.getRenderer().createRenderState(RenderStateType.Texture);
-		 groundState.setTexture(groundTexture,0);
-		 groundState.setEnabled(true);
-		 // apply the texture to the terrain
-		 hillTerrain.setRenderState(groundState);
-		 addGameWorldObject(hillTerrain);
-		
+	{
+		Transform myTransform;
+		// define the broad-phase collision to be used (Sweep-and-Prune)
+		broadPhaseHandler = new AxisSweep3(worldAabbMin, worldAabbMax, maxProxies);
+		// set up the narrow-phase collision handler ("dispatcher")
+		collConfig = new DefaultCollisionConfiguration();
+		collDispatcher = new CollisionDispatcher(collConfig);
+		// create a constraint solver
+		solver = new SequentialImpulseConstraintSolver();
+		// create a physics world utilizing the above objects
+		physicsWorld = new DiscreteDynamicsWorld(collDispatcher, broadPhaseHandler, solver, collConfig);
+		physicsWorld.setGravity(new Vector3f(0, -10, 0));
+		// define physicsGround plane: normal vector = 'up', dist from origin =
+		// 1
+		CollisionShape groundShape = new StaticPlaneShape(new Vector3f(0, 1, 0), groundHeight + 1);
+		// set position and orientation of physicsGround's transform
+		myTransform = new Transform();
+		myTransform.origin.set(new Vector3f(0, -1, 0));
+		myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		// define construction info for a 'physicsGround' rigid body
+		DefaultMotionState groundMotionState = new DefaultMotionState(myTransform);
+		RigidBodyConstructionInfo groundCI = new RigidBodyConstructionInfo(0, groundMotionState, groundShape, new Vector3f(0, 0, 0));
+		groundCI.restitution = 0.8f;
+		// create the physicsGround rigid body and add it to the physics world
+		physicsGround = new RigidBody(groundCI);
+		physicsWorld.addRigidBody(physicsGround);
+		// define a collision shape for a physicsBall
+		CollisionShape fallShape = new SphereShape(1);
+		// define a transform for position and orientation of ball collision
+		// shape
+		myTransform = new Transform();
+		myTransform.origin.set(new Vector3f(0, 20, 5));
+		myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		// define the parameters of the collision shape
+		DefaultMotionState fallMotionState = new DefaultMotionState(myTransform);
+		float myFallMass = 1;
+		Vector3f myFallInertia = new Vector3f(0, 0, 0);
+		fallShape.calculateLocalInertia(myFallMass, myFallInertia);
+		// define construction info for a 'physicsBall' rigid body
+		RigidBodyConstructionInfo fallRigidBodyCI = new RigidBodyConstructionInfo(myFallMass, fallMotionState, fallShape, myFallInertia);
+		fallRigidBodyCI.restitution = 0.8f;
+		// create the physicsBall rigid body and add it to the physics world
+		physicsBall = new RigidBody(fallRigidBodyCI);
+		physicsWorld.addRigidBody(physicsBall);
 	}
 
-	private TerrainBlock createTerrainBlock(ImageBasedHeightMap heightMap) {
+	private void initTerrain()
+	{
+		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circle2.jpg");
+
+		hillTerrain = createTerrainBlock(heightMap);
+		// create texture and texture state to color the terrain
+		TextureState groundState;
+		Texture groundTexture = TextureManager.loadTexture2D(imagesDirectory + "/Craterscape.jpg");
+		groundTexture.setApplyMode(sage.texture.Texture.ApplyMode.Replace);
+		groundState = (TextureState) display.getRenderer().createRenderState(RenderStateType.Texture);
+		groundState.setTexture(groundTexture, 0);
+		groundState.setEnabled(true);
+		// apply the texture to the terrain
+		hillTerrain.setRenderState(groundState);
+		addGameWorldObject(hillTerrain);
+
+	}
+
+	private TerrainBlock createTerrainBlock(ImageBasedHeightMap heightMap)
+	{
 		float heightScale = 0.1f;
 		Vector3D terrainScale = new Vector3D(1, heightScale, 1);
 		// use the size of the height map as the size of the terrain
@@ -386,50 +439,46 @@ public class FinalGame extends BaseGame {
 		return tb;
 	}
 
-	private void createEssentialObjects() {
+	private void createEssentialObjects()
+	{
 		// Get renderer
 		renderer = display.getRenderer();
-		
+
 		// For managing collisions
 		eventManager = EventManager.getInstance();
-		
+		SinkListener sinkListener = new SinkListener(this);
+		eventManager.addListener(sinkListener, SinkEvent.class);
+
 		// For loading Blender objects
 		objectLoader = new OBJLoader();
 	}
 
-	private void createPlayers() {
+	private void createPlayers()
+	{
 		player1 = objectLoader.loadModel(modelsDirectory + "world2.obj");
-		
-		Texture ballTexture = TextureManager.loadTexture2D(modelsDirectory + "worldMap.png");
-		TextureState ballTextureState = (TextureState)renderer.createRenderState(RenderStateType.Texture);
+
+		Texture ballTexture = TextureManager.loadTexture2D(modelsDirectory + planetChoice);
+		TextureState ballTextureState = (TextureState) renderer.createRenderState(RenderStateType.Texture);
 		ballTextureState.setTexture(ballTexture);
 		ballTextureState.setEnabled(true);
 		player1.setRenderState(ballTextureState);
-		
+
 		player1.scale(1f, 1f, 1f);
 		player1.translate(0, 20f, 5);
 		player1.rotate(180, new Vector3D(0, 1, 0));
 		player1.updateGeometricState(1f, true);
-		//addGameWorldObject(player1);
+		// addGameWorldObject(player1);
 		scene.addChild(player1);
-	
+
 		camera1 = new JOGLCamera(renderer);
 		camera1.setPerspectiveFrustum(130, 2, .1, 1000);
 		camera1.setViewport(0f, 1f, 0f, 1f);
-	
-//		player2 = new Pyramid("PLAYER2");
-//		player2.scale(.5f, .5f, .5f);
-//		player2.translate(5, .5f, 0);
-//		player2.rotate(-90, new Vector3D(0, 1, 0));
-////		addGameWorldObject(player2);
-//		scene.addChild(player2);
-//	
-//		camera2 = new JOGLCamera(renderer);
-//		camera2.setPerspectiveFrustum(90, 2, .1, 1000);
-//		camera2.setViewport(0f, 1f, 0f, .45f);
+
+		IsPlayerAlive = true;
 	}
 
-	private void initGameElements(){
+	private void initGameElements()
+	{
 		// Get the display objects
 		display = getDisplaySystem();
 		display.setTitle("SUMO! Phil Hawkins and Kevin Jones");
@@ -440,152 +489,71 @@ public class FinalGame extends BaseGame {
 		// Get keyboard, gamepad and mouse
 		keyboardName = inputManager.getKeyboardName();
 		gamepadName = inputManager.getFirstGamepadName();
-		
-		if(gamepadName != null){
+
+		if (gamepadName != null)
+		{
 			foundController = true;
 		}
-		
-//		String mouseName = inputManager.getMouseName();
-		
-		// Setup both camera controllers
-//		camera1Controller = new OrbitCameraController(camera1, inputManager, player1, mouseName);
-//		camera2Controller = new OrbitCameraController(camera2, inputManager, player2, gamepadName);
-		
-		// Setup Phil's camera controllers
+
 		camera1Controller = new OrbitCameraController(camera1, player1, inputManager, keyboardName, true);
-		
-//		if(foundController)
-//			camera1GPController = new OrbitCameraController(camera1, player1, inputManager, keyboardName, false);
-		
-		//camera2Controller = new OrbitCameraController(camera2, player2, inputManager, gamepadName, false);
-		
-		// initialize Phil's actions
-			
 
 		RotateObjectLeft rotatePlayer1Left = new RotateObjectLeft(player1);
-		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.A, 
-				rotatePlayer1Left, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.A, rotatePlayer1Left,
+				IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
 		RotateObjectRight rotatePlayer1Right = new RotateObjectRight(player1);
-		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, 
-				rotatePlayer1Right, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.D, rotatePlayer1Right,
+				IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
 		MoveObjectForwardAction movePlayer1Forward = new MoveObjectForwardAction(player1, hillTerrain, thisClient, this);
-		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, 
-				movePlayer1Forward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.W, movePlayer1Forward,
+				IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
 		MoveObjectBackwardAction movePlayer1Backward = new MoveObjectBackwardAction(player1, hillTerrain, thisClient, this);
-		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S,
-				movePlayer1Backward, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
-//		if(gamepadName != null){
-//			RotateObjectAction rotateP2 = new RotateObjectAction(player2);
-//			MoveObjectAction moveP2 = new MoveObjectAction(player2);
-//			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.X,
-//					rotateP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-//			inputManager.associateAction(gamepadName, net.java.games.input.Component.Identifier.Axis.Y, 
-//					moveP2, IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-//		}
-		
+		inputManager.associateAction(keyboardName, net.java.games.input.Component.Identifier.Key.S, movePlayer1Backward,
+				IInputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
 		quitGameAction = new QuitGameAction(this);
 		inputManager.associateAction(keyboardName, Identifier.Key.ESCAPE, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-			
-		
-		// Initalize actions
-//		quitGameAction = new QuitGameAction(this);
-//		
-//		orbitCameraLeft = new OrbitCameraAction(camera1Controller, MoveDirections.LEFT);
-//		orbitCameraRight = new OrbitCameraAction(camera1Controller, MoveDirections.RIGHT);
-//		orbitCameraForward = new OrbitCameraAction(camera1Controller, MoveDirections.FORWARD);
-//		orbitCameraBackward = new OrbitCameraAction(camera1Controller, MoveDirections.BACKWARD);
-//		
-//		zoomInCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_IN);
-//		zoomOutCamera = new ZoomCameraAction(camera1Controller, ZoomTypes.ZOOM_OUT);
-//	
-//		movePlayerForward = new MovePlayerAction(player1, MoveDirections.FORWARD);
-//		movePlayerBackward = new MovePlayerAction(player1, MoveDirections.BACKWARD);
-//		movePlayerLeft = new MovePlayerAction(player1, MoveDirections.LEFT);
-//		movePlayerRight = new MovePlayerAction(player1, MoveDirections.RIGHT);
-//		
-//		p2movePlayerForwardBackward = new MovePlayerAction(player2, MoveDirections.LEFTSTICKX);
-//		p2movePlayerLeftRight = new MovePlayerAction(player2, MoveDirections.LEFTSTICKY);
-//		p2orbitCameraUpDown = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKY);
-//		p2orbitCameraLeftRight = new OrbitCameraAction(camera2Controller, MoveDirections.RIGHTSTICKX);	
-//		
-//		p2ZoomInCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_IN);
-//		p2ZoomOutCamera = new ZoomCameraAction(camera2Controller, ZoomTypes.ZOOM_OUT);
-	}
-	
-	private void linkActionsToControls()
-	{
-		// Escape to quit button
-		inputManager.associateAction(keyboardName, Identifier.Key.ESCAPE, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		// Keyboard Move
-		inputManager.associateAction(keyboardName, Identifier.Key.W, movePlayerForward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.S, movePlayerBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.A, movePlayerLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.D, movePlayerRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
-		// Keyboard Orbit
-		inputManager.associateAction(keyboardName, Identifier.Key.UP, orbitCameraForward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.DOWN, orbitCameraBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.LEFT, orbitCameraLeft, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(keyboardName, Identifier.Key.RIGHT, orbitCameraRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		
-		//Keyboard Zoom In/Out
-		inputManager.associateAction(keyboardName, Identifier.Key.Z, zoomInCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		inputManager.associateAction(keyboardName, Identifier.Key.X, zoomOutCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-	
-		// Gamepad back button escape. First gamepad code. If gamepad not found exit game.
-		try
-		{
-			inputManager.associateAction(gamepadName, Identifier.Button._6, quitGameAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		}
-		catch (Exception e)
-		{
-			System.err.println("Turn your controller back on!");
-			System.exit(0);
-		}
-	
-		// Gamepad Move
-		inputManager.associateAction(gamepadName, Identifier.Axis.X, p2movePlayerForwardBackward, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(gamepadName, Identifier.Axis.Y, p2movePlayerLeftRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		// Gamepad pitch and yaw
-		inputManager.associateAction(gamepadName, Identifier.Axis.RX, p2orbitCameraLeftRight, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		inputManager.associateAction(gamepadName, Identifier.Axis.RY, p2orbitCameraUpDown, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		// Gamepad Zoom In/out
-		inputManager.associateAction(gamepadName, Identifier.Button._4, p2ZoomInCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		inputManager.associateAction(gamepadName, Identifier.Button._5, p2ZoomOutCamera, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
-	private void createGameWorldObjects() {
+	private void createGameWorldObjects()
+	{
 		createWorldAxes();
-		
+
 		ground = new Cylinder("ground");
 		ground.setCullMode(CULL_MODE.NEVER);
 		ground.setRadius(100);
 		ground.setHeight(70f);
 		ground.setSlices(20);
 		ground.setSolid(true);
-		ground.setColor(Color.gray);
+		ground.setColor(Color.red);
 		ground.rotate(90, new Vector3D(1, 0, 0));
 		ground.translate(50, 5f, 50);
 		ground.setShowBound(true);
 		groundHeight = 5f;
 		addGameWorldObject(ground);
 		
-		astronaut = new Cylinder("astronaut");
-		//astronaut.setHeight(120f);
-		astronaut.translate(10, 55f, 50);
-		astronaut.setRadius(10);
-		astronaut.setHeight(10);
-		astronaut.setSolid(true);
-		astronaut.setShowBound(true);
-		astronaut.setColor(Color.white);
-		addGameWorldObject(astronaut);		
+		OgreXMLParser loader = new OgreXMLParser();
+		try
+		{
+			model = loader.loadModel(modelsDirectory + "Cube.mesh.xml", modelsDirectory + "Material.material", modelsDirectory + "Cube.skeleton.xml");
+			model.updateGeometricState(0, true);
+			java.util.Iterator<SceneNode> modelIteartor = model.iterator();
+			alien = (Model3DTriMesh) modelIteartor.next();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		alien.translate(35, 30f, 30);
+		addGameWorldObject(alien);
 	}
 
-	private void createWorldAxes() {
+	private void createWorldAxes()
+	{
 		Point3D origin = new Point3D(0, 0, 0);
 		Point3D xEnd = new Point3D(100, 0, 0);
 		Point3D yEnd = new Point3D(0, 100, 0);
@@ -599,109 +567,139 @@ public class FinalGame extends BaseGame {
 	}
 
 	private void createScene()
-	{		
-		ScriptEngineManager factory = new ScriptEngineManager(); 
-		String sceneFileName = scriptsDirectory + "CreateScene.js";	
-		
+	{
+		ScriptEngineManager factory = new ScriptEngineManager();
+		String sceneFileName = scriptsDirectory + "CreateScene.js";
+
 		// get the JavaScript engine
 		ScriptEngine jsEngine = factory.getEngineByName("js");
-		
+
 		// run the script
 		this.executeScript(jsEngine, sceneFileName);
-		
-		scene = (Group)jsEngine.get("scene");
-		skyBox = (SkyBox)jsEngine.get("skyBox");
-		
+
+		scene = (Group) jsEngine.get("scene");
+		skyBox = (SkyBox) jsEngine.get("skyBox");
+
 		addGameWorldObject(scene);
 	}
-	
-	private void executeScript(ScriptEngine engine, String scriptFileName) 
+
+	private void executeScript(ScriptEngine engine, String scriptFileName)
 	{
 		try
-		{ 
+		{
 			FileReader fileReader = new FileReader(scriptFileName);
 			engine.eval(fileReader);
-			fileReader.close(); 
+			fileReader.close();
 		}
-		//execute the script statements in the file
+		// execute the script statements in the file
 		catch (FileNotFoundException e1)
-		{ 
-			System.out.println(scriptFileName + " not found " + e1); 
+		{
+			System.out.println(scriptFileName + " not found " + e1);
 		}
 		catch (IOException e2)
-		{ 
-			System.out.println("IO problem with " + scriptFileName + e2); 
-		} 
+		{
+			System.out.println("IO problem with " + scriptFileName + e2);
+		}
 		catch (ScriptException e3)
-		{ 
-			System.out.println("ScriptException in " + scriptFileName + e3); 
-		} 
+		{
+			System.out.println("ScriptException in " + scriptFileName + e3);
+		}
 		catch (NullPointerException e4)
-		{ 
-			System.out.println ("Null ptr exception in " + scriptFileName + e4); 
+		{
+			System.out.println("Null ptr exception in " + scriptFileName + e4);
 		}
 	}
 
 	@Override
 	protected void update(float elapsedTimeMS)
-	{		
+	{
+		timeElaspsed += elapsedTimeMS;
+		if (!IsDeathTime && (TimeUntilDeath - (timeElaspsed / 1000)) < 0)
+		{
+			IsDeathTime = true;
+			timeRemainingString.setText("RUN!");
+			alien.startAnimation("my_animation");
+		}
+		else
+		{
+			timeRemainingString.setText("Time Until Death: " + (TimeUntilDeath - (timeElaspsed / 1000)));
+		}
+
+		if (IsDeathTime)
+		{
+			ground.translate(0, .001f, 0);
+			ground.updateLocalBound();
+			ground.updateWorldBound();
+		}
+
 		gameTime += elapsedTimeMS;
-		if(gameTime > 3000){
+		if (gameTime > 3000)
+		{
 			running = true;
 		}
-		if(gameTime > 8000){
+		if (gameTime > 8000)
+		{
 			running = false;
 		}
-		if(running){
-			 { 
-				 physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8 steps
-				 // read and display the updated physicsBall position
-				 Transform pBallTransform = new Transform();
-				 physicsBall.getMotionState().getWorldTransform(pBallTransform);
-				 //update the graphics ball location from the physics ball
-				 float[] vals = new float[16];
-				 pBallTransform.getOpenGLMatrix(vals);
-				 Matrix3D gBallXform = new Matrix3D(vals);
-				 player1.setLocalTranslation(gBallXform);
+		if (running)
+		{
+			{
+				physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8
+																// steps
+				// read and display the updated physicsBall position
+				Transform pBallTransform = new Transform();
+				physicsBall.getMotionState().getWorldTransform(pBallTransform);
+				// update the graphics ball location from the physics ball
+				float[] vals = new float[16];
+				pBallTransform.getOpenGLMatrix(vals);
+				Matrix3D gBallXform = new Matrix3D(vals);
+				player1.setLocalTranslation(gBallXform);
 				dropTime += elapsedTimeMS;
-				if(dropTime > 50){
-					thisClient.sendMoveMessage(getPlayerPosition());
+				if (dropTime > 50)
+				{
+					 thisClient.sendMoveMessage(getPlayerPosition());
 					dropTime = 0;
 				}
-			 }
-
-//			Matrix3D mat;
-//			Vector3D translateVec;
-//			physicsEngine.update(1f);
-//			for (SceneNode s : getGameWorld())
-//			{ 
-//				if (s.getPhysicsObject() != null)
-//				{ 
-//					mat = new Matrix3D(s.getPhysicsObject().getTransform());
-//					translateVec = mat.getCol(3);
-//					s.getLocalTranslation().setCol(3,translateVec);
-//					// should also get and apply rotation
-//				}
-//			}
+			}
 		}
-		Point3D cameraLocation = camera1.getLocation();
-		Matrix3D cameraTranslation = new Matrix3D();
-		cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
-		skyBox.setLocalTranslation(cameraTranslation);		
-		
-		camera1Controller.update(elapsedTimeMS);
+
+		if (IsPlayerAlive)
+		{
+			// Check for collisions only while the lava is rising
+			if (IsDeathTime)
+			{
+				if (player1.getLocalTranslation().getCol(3).getY() < ground.getLocalTranslation().getCol(3).getY())
+				{
+					SinkEvent playerSunk = new SinkEvent(++playersSunk);
+					eventManager.triggerEvent(playerSunk);
+				}
+			}
+
+			// Check if player is alive again, he may have tragically died in
+			// the event.
+			if (IsPlayerAlive)
+			{
+				Point3D cameraLocation = camera1.getLocation();
+				Matrix3D cameraTranslation = new Matrix3D();
+				cameraTranslation.translate(cameraLocation.getX(), cameraLocation.getY(), cameraLocation.getZ());
+				skyBox.setLocalTranslation(cameraTranslation);
+
+				camera1Controller.update(elapsedTimeMS);
+				backgroundSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
+				countdownSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
+				setEarParameters();
+			}
+		}
+
 		super.update(elapsedTimeMS);
-		
-		backgroundSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
-		astronautSound.setLocation(new Point3D(player1.getWorldTranslation().getCol(3)));
-		setEarParameters();
-		
-		if(thisClient != null)
+		alien.updateAnimation(elapsedTimeMS);
+
+		if (thisClient != null)
 		{
 			thisClient.processPackets();
-		}		
+		}
 	}
-	
+
 	@Override
 	protected void render()
 	{
@@ -714,76 +712,98 @@ public class FinalGame extends BaseGame {
 	{
 		display.close();
 		super.shutdown();
-		if(thisClient != null)
-		 { 
+		if (thisClient != null)
+		{
 			thisClient.sendByeMessage();
-			 try { 
-				 	thisClient.shutdown(); 
-				} // shutdown() is inherited
-			catch (IOException e) { 
-				e.printStackTrace(); 
+			try
+			{
+				thisClient.shutdown();
 			}
-		} 
-
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
 	}
 
-	public void setIsConnected(boolean b) {
+	public void setIsConnected(boolean b)
+	{
 		// TODO Auto-generated method stub
 		isConnected = b;
 	}
 
-	public Vector3D getPlayerPosition() {
+	public Vector3D getPlayerPosition()
+	{
 		// TODO Auto-generated method stub
-		
+
 		Vector3D pos = player1.getWorldTransform().getCol(3);
-		
+
 		return new Vector3D(pos.getX(), pos.getY(), pos.getZ());
 	}
 
-	public void removeGhostAvatar(UUID ghostID) {
-		// TODO Auto-generated method stub
-
-		if(ghostAvatars.containsKey(ghostID)){
+	public void removeGhostAvatar(UUID ghostID)
+	{
+		if (ghostAvatars.containsKey(ghostID))
+		{
 			removeGameWorldObject(ghostAvatars.get(ghostID).getSceneNode());
 			ghostAvatars.remove(ghostID);
 		}
 	}
 
-	public void createGhostAvatar(UUID ghostID, String[] ghostPosition) {
-		// TODO Auto-generated method stub
+	public void createGhostAvatar(UUID ghostID, String[] ghostPosition)
+	{
 		GhostAvatar newAvatar = new GhostAvatar(ghostID, ghostPosition);
 		ghostAvatars.put(ghostID, newAvatar);
 		addGameWorldObject(newAvatar.getSceneNode());
 	}
 
-	public void updateGhostAvatar(UUID ghostID, String[] ghostPosition) {
-		// TODO Auto-generated method stub
+	public void updateGhostAvatar(UUID ghostID, String[] ghostPosition)
+	{
 		GhostAvatar ghost = ghostAvatars.get(ghostID);
-		if(ghost != null){
+		if (ghost != null)
+		{
 			ghost.setPosition(ghostPosition);
 		}
 	}
-	
-	public boolean getGhost(UUID id){
-		if(ghostAvatars.containsKey(id)){
+
+	public boolean getGhost(UUID id)
+	{
+		if (ghostAvatars.containsKey(id))
+		{
 			return true;
 		}
-		else{
+		else
+		{
 			return false;
 		}
 	}
-	
-	public float getGroundHeight(){
+
+	public float getGroundHeight()
+	{
 		return groundHeight;
 	}
 
-	public void addGhostNPCtoWorld(GhostNPC npc) {
+	public void addGhostNPCtoWorld(GhostNPC npc)
+	{
 		addGameWorldObject(npc.getBody());
 	}
-	
-	public float getTerrainHeightAtLoc(float x, float y){
+
+	public float getTerrainHeightAtLoc(float x, float y)
+	{
 		return hillTerrain.getHeight(x, y);
 	}
-	
 
+	public void RemovePlayer()
+	{
+		removeGameWorldObject(player1);
+		IsPlayerAlive = false;
+		scene.removeChild(player1);
+		player1.updateLocalBound();
+		player1.updateWorldBound();
+	}
+
+	public HUDString GetPlayersSunkHUD()
+	{
+		return playersSunkString;
+	}
 }

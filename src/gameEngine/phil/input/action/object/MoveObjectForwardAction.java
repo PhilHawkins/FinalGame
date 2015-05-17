@@ -44,7 +44,7 @@ public class MoveObjectForwardAction implements IAction {
 
 		Vector3D pos = object.getWorldTransform().getCol(3);
 		
-		client.sendMoveMessage(new Vector3D(pos.getX(), pos.getY(), pos.getZ()));
+		//client.sendMoveMessage(new Vector3D(pos.getX(), pos.getY(), pos.getZ()));
 	}
 
 }
