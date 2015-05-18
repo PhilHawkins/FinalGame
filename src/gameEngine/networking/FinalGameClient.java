@@ -35,7 +35,7 @@ public class FinalGameClient extends GameConnectionClient {
 			if(msgTokens[1].compareTo("success") == 0)
 			{ 
 				game.setIsConnected(true);
-				sendCreateMessage(game.getPlayerPosition());
+				sendCreateMessage(game.getPlayerPosition(), game.getPlayerPlanet());
 			}
 			else if(msgTokens[1].compareTo("failure") == 0)
 			{
@@ -52,20 +52,23 @@ public class FinalGameClient extends GameConnectionClient {
 			UUID ghostID = UUID.fromString(msgTokens[1]);
 			if(!game.getGhost(ghostID)){
 				String[] ghostPosition = {msgTokens[2], msgTokens[3], msgTokens[4]};
-				game.createGhostAvatar(ghostID, ghostPosition);
+				String planet = msgTokens[5];
+				game.createGhostAvatar(ghostID, ghostPosition, planet);
 			}
 		}
 		if(msgTokens[0].compareTo("create") == 0) // receive “create…”
 		{ // etc….. 
 			UUID ghostID = UUID.fromString(msgTokens[1]);
 			String[] ghostPosition = {msgTokens[2], msgTokens[3], msgTokens[4]};
-			game.createGhostAvatar(ghostID, ghostPosition);
+			String planet = msgTokens[5];
+			game.createGhostAvatar(ghostID, ghostPosition, planet);
 		}
 		if(msgTokens[0].compareTo("wsds") == 0) // receive “wants…”
 		{ // etc….. 
 			UUID remId = UUID.fromString(msgTokens[1]);
 			Vector3D playerPosition = game.getPlayerPosition();
-			sendDetailsForMessage(remId, playerPosition);
+			String planet = game.getPlayerPlanet();
+			sendDetailsForMessage(remId, playerPosition, planet);
 		}
 		if(msgTokens[0].compareTo("move") == 0) // receive “move”
 		{ // etc….. }
@@ -107,12 +110,13 @@ public class FinalGameClient extends GameConnectionClient {
 
 	}
 	
-	public void sendCreateMessage(Vector3D pos)
+	public void sendCreateMessage(Vector3D pos, String planet)
 	{ // format: (create, localId, x,y,z)
 		try
 		 { 
 			String message = new String("create," + id.toString());
 			message += "," + String.valueOf(pos.getX()) +"," + String.valueOf(pos.getY()) + "," + String.valueOf(pos.getZ());
+			message += "," + planet;
 			sendPacket(message);
 		 }
 		 catch (IOException e) { 
@@ -142,11 +146,12 @@ public class FinalGameClient extends GameConnectionClient {
 		}
 	}
 	
-	public void sendDetailsForMessage(UUID remId, Vector3D pos)
+	public void sendDetailsForMessage(UUID remId, Vector3D pos, String planet)
 	{ // etc….. }
 
 		String message = new String("dsfr," + id.toString() + "," + remId.toString());
 		message += "," + String.valueOf(pos.getX()) +"," + String.valueOf(pos.getY()) + "," + String.valueOf(pos.getZ());
+		message += "," + planet;
 		try {
 			sendPacket(message);
 		} catch (IOException e) {

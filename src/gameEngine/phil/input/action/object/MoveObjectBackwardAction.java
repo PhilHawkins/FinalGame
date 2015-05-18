@@ -44,7 +44,9 @@ public class MoveObjectBackwardAction implements IAction {
 		
 		Vector3D pos = object.getWorldTransform().getCol(3);
 		
-		//client.sendMoveMessage(new Vector3D(pos.getX(), pos.getY(), pos.getZ()));
+		if(game.isNetworkedGame()){
+			client.sendMoveMessage(new Vector3D(pos.getX(), pos.getY(), pos.getZ()));
+		}
 	}
 
 }

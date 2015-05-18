@@ -3,20 +3,35 @@ package gameEngine.networking;
 import graphicslib3D.Matrix3D;
 import graphicslib3D.Vector3D;
 
+import java.io.File;
 import java.util.UUID;
 
+import FinalGame.FinalGame;
+import sage.model.loader.OBJLoader;
 import sage.scene.SceneNode;
 import sage.scene.shape.Pyramid;
+import sage.scene.state.TextureState;
+import sage.scene.state.RenderState.RenderStateType;
+import sage.texture.Texture;
+import sage.texture.TextureManager;
 
 public class GhostAvatar {
-	private Pyramid thisAvatar;
+	private FinalGame game;
+	private SceneNode thisAvatar;
 	private UUID id;
+	private String planet;
 	
-	public GhostAvatar(UUID id, String[] pos){
+	public GhostAvatar(UUID id, String[] pos, String planet, FinalGame g){
 		this.id = id;
-		thisAvatar = new Pyramid();
-		thisAvatar.scale(.5f, .5f, .5f);
-		thisAvatar.translate(Float.parseFloat(pos[0]), Float.parseFloat(pos[1]), Float.parseFloat(pos[2]));		
+		this.planet = planet;
+		this.game = g;
+		
+//		thisAvatar = new Pyramid();
+//		thisAvatar.scale(.5f, .5f, .5f);
+//		thisAvatar.translate(Float.parseFloat(pos[0]), Float.parseFloat(pos[1]), Float.parseFloat(pos[2]));	
+
+		thisAvatar = game.createObj(planet);
+		
 	}
 	
 	public UUID getID(){

@@ -155,27 +155,63 @@ public class FinalGame extends BaseGame
 	boolean IsDeathTime = false;
 	private static final int TimeUntilDeath = 10;
 	
+	private boolean isNetworked;
 	private String planetChoice;
-
 	private int playersSunk;
 
 	// Sounds
 	IAudioManager audioManager;
 	Sound backgroundSound, countdownSound;
 
-	public FinalGame(String serverAddr, int sPort)
+	public FinalGame()
 	{
 		super();
 		
+		isConnected = false;
+
+		isNetworked = promptNetwork();
+		if(isNetworked){
+			this.serverAddress = promptServerAddr();
+			this.serverPort = promptServerPort();
+			this.serverProtocol = ProtocolType.TCP;
+			ghostAvatars = new HashMap<UUID, GhostAvatar>();
+		}
+		
 		planetChoice = getPlantetChoice();
 		
-		isConnected = false;
-		this.serverAddress = serverAddr;
-		this.serverPort = sPort;
-		this.serverProtocol = ProtocolType.TCP;
-		ghostAvatars = new HashMap<UUID, GhostAvatar>();
 		dropTime = 0;
 		playersSunk = 0;
+	}
+
+	private int promptServerPort() {
+		int port;
+		System.out.println("Please enter server port: ");
+		Scanner scanner = new Scanner(System.in);
+		port = scanner.nextInt();
+		return port;
+	}
+
+	private String promptServerAddr() {
+		String addr = "";
+		System.out.println("Please enter a network address: ");
+		Scanner scanner = new Scanner(System.in);
+		addr = scanner.next();
+		return addr;
+	}
+
+	private boolean promptNetwork() {
+		System.out.println("Would you like to play a networked multiplayer game? y/n ");
+		Scanner scanner = new Scanner(System.in);
+		String selection = scanner.next();
+		if(selection.equals("y")){
+			return true;
+		}else if(selection.equals("n")){
+			return false;
+		}
+		else{
+			System.out.println("Invalid input");
+			return promptNetwork();
+		}
 	}
 
 	private String getPlantetChoice()
@@ -262,23 +298,20 @@ public class FinalGame extends BaseGame
 	@Override
 	protected void initGame()
 	{
-		 try
-		 {
-		 thisClient = new
-		 FinalGameClient(InetAddress.getByName(serverAddress), serverPort,
-		 serverProtocol, this);
-		 }
-		 catch (UnknownHostException e) {
-		 e.printStackTrace();
-		 }
-		 catch (IOException e) {
-		 e.printStackTrace();
-		 }
-		
-		 if (thisClient != null)
-		 {
-		 thisClient.sendJoinMessage();
-		 }
+		if(isNetworked){
+			 try
+			 {
+				 thisClient = new FinalGameClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this);
+			 }catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			 if (thisClient != null)
+			 {
+				 thisClient.sendJoinMessage();
+			 }
+		}
 
 		createScene();
 		createEssentialObjects();
@@ -362,45 +395,54 @@ public class FinalGame extends BaseGame
 	private void createPhysicsWorld()
 	{
 		Transform myTransform;
+		
 		// define the broad-phase collision to be used (Sweep-and-Prune)
 		broadPhaseHandler = new AxisSweep3(worldAabbMin, worldAabbMax, maxProxies);
+		
 		// set up the narrow-phase collision handler ("dispatcher")
 		collConfig = new DefaultCollisionConfiguration();
 		collDispatcher = new CollisionDispatcher(collConfig);
 		// create a constraint solver
 		solver = new SequentialImpulseConstraintSolver();
+		
 		// create a physics world utilizing the above objects
 		physicsWorld = new DiscreteDynamicsWorld(collDispatcher, broadPhaseHandler, solver, collConfig);
 		physicsWorld.setGravity(new Vector3f(0, -10, 0));
-		// define physicsGround plane: normal vector = 'up', dist from origin =
-		// 1
+
 		CollisionShape groundShape = new StaticPlaneShape(new Vector3f(0, 1, 0), groundHeight + 1);
+		
 		// set position and orientation of physicsGround's transform
 		myTransform = new Transform();
 		myTransform.origin.set(new Vector3f(0, -1, 0));
 		myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		
 		// define construction info for a 'physicsGround' rigid body
 		DefaultMotionState groundMotionState = new DefaultMotionState(myTransform);
 		RigidBodyConstructionInfo groundCI = new RigidBodyConstructionInfo(0, groundMotionState, groundShape, new Vector3f(0, 0, 0));
 		groundCI.restitution = 0.8f;
+		
 		// create the physicsGround rigid body and add it to the physics world
 		physicsGround = new RigidBody(groundCI);
 		physicsWorld.addRigidBody(physicsGround);
+		
 		// define a collision shape for a physicsBall
 		CollisionShape fallShape = new SphereShape(1);
-		// define a transform for position and orientation of ball collision
-		// shape
+		
+		// define a transform for position and orientation of ball collision shape
 		myTransform = new Transform();
 		myTransform.origin.set(new Vector3f(0, 20, 5));
 		myTransform.setRotation(new Quat4f(0, 0, 0, 1));
+		
 		// define the parameters of the collision shape
 		DefaultMotionState fallMotionState = new DefaultMotionState(myTransform);
 		float myFallMass = 1;
 		Vector3f myFallInertia = new Vector3f(0, 0, 0);
 		fallShape.calculateLocalInertia(myFallMass, myFallInertia);
+		
 		// define construction info for a 'physicsBall' rigid body
 		RigidBodyConstructionInfo fallRigidBodyCI = new RigidBodyConstructionInfo(myFallMass, fallMotionState, fallShape, myFallInertia);
 		fallRigidBodyCI.restitution = 0.8f;
+		
 		// create the physicsBall rigid body and add it to the physics world
 		physicsBall = new RigidBody(fallRigidBodyCI);
 		physicsWorld.addRigidBody(physicsBall);
@@ -411,6 +453,7 @@ public class FinalGame extends BaseGame
 		ImageBasedHeightMap heightMap = new ImageBasedHeightMap(imagesDirectory + "/circle2.jpg");
 
 		hillTerrain = createTerrainBlock(heightMap);
+		
 		// create texture and texture state to color the terrain
 		TextureState groundState;
 		Texture groundTexture = TextureManager.loadTexture2D(imagesDirectory + "/Craterscape.jpg");
@@ -418,6 +461,7 @@ public class FinalGame extends BaseGame
 		groundState = (TextureState) display.getRenderer().createRenderState(RenderStateType.Texture);
 		groundState.setTexture(groundTexture, 0);
 		groundState.setEnabled(true);
+		
 		// apply the texture to the terrain
 		hillTerrain.setRenderState(groundState);
 		addGameWorldObject(hillTerrain);
@@ -428,11 +472,14 @@ public class FinalGame extends BaseGame
 	{
 		float heightScale = 0.1f;
 		Vector3D terrainScale = new Vector3D(1, heightScale, 1);
+		
 		// use the size of the height map as the size of the terrain
 		int terrainSize = heightMap.getSize();
+		
 		// specify terrain origin so heightmap (0,0) is at world origin
 		float cornerHeight = heightMap.getTrueHeightAtPoint(0, 0) * heightScale;
 		Point3D terrainOrigin = new Point3D(-0, 0.0f, -0);
+		
 		// create a terrain block using the height map
 		String name = "Terrain:" + heightMap.getClass().getSimpleName();
 		TerrainBlock tb = new TerrainBlock(name, terrainSize, terrainScale, heightMap.getHeightData(), terrainOrigin);
@@ -455,18 +502,10 @@ public class FinalGame extends BaseGame
 
 	private void createPlayers()
 	{
-		player1 = objectLoader.loadModel(modelsDirectory + "world2.obj");
+		player1 = createObj(planetChoice);
 
-		Texture ballTexture = TextureManager.loadTexture2D(modelsDirectory + planetChoice);
-		TextureState ballTextureState = (TextureState) renderer.createRenderState(RenderStateType.Texture);
-		ballTextureState.setTexture(ballTexture);
-		ballTextureState.setEnabled(true);
-		player1.setRenderState(ballTextureState);
-
-		player1.scale(1f, 1f, 1f);
 		player1.translate(0, 20f, 5);
-		player1.rotate(180, new Vector3D(0, 1, 0));
-		player1.updateGeometricState(1f, true);
+		
 		// addGameWorldObject(player1);
 		scene.addChild(player1);
 
@@ -475,6 +514,21 @@ public class FinalGame extends BaseGame
 		camera1.setViewport(0f, 1f, 0f, 1f);
 
 		IsPlayerAlive = true;
+	}
+	
+	public SceneNode createObj(String planet){
+		SceneNode target = objectLoader.loadModel(modelsDirectory + "world2.obj");
+
+		Texture ballTexture = TextureManager.loadTexture2D(modelsDirectory + planet);
+		TextureState ballTextureState = (TextureState) renderer.createRenderState(RenderStateType.Texture);
+		ballTextureState.setTexture(ballTexture);
+		ballTextureState.setEnabled(true);
+		target.setRenderState(ballTextureState);
+
+		target.scale(1f, 1f, 1f);
+		target.rotate(180, new Vector3D(0, 1, 0));
+		target.updateGeometricState(1f, true);
+		return target;
 	}
 
 	private void initGameElements()
@@ -591,6 +645,7 @@ public class FinalGame extends BaseGame
 			engine.eval(fileReader);
 			fileReader.close();
 		}
+		
 		// execute the script statements in the file
 		catch (FileNotFoundException e1)
 		{
@@ -627,7 +682,7 @@ public class FinalGame extends BaseGame
 
 		if (IsDeathTime)
 		{
-			ground.translate(0, .001f, 0);
+			//ground.translate(0, .001f, 0);
 			ground.updateLocalBound();
 			ground.updateWorldBound();
 		}
@@ -643,24 +698,24 @@ public class FinalGame extends BaseGame
 		}
 		if (running)
 		{
+			
+			physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8
+															// steps
+			// read and display the updated physicsBall position
+			Transform pBallTransform = new Transform();
+			physicsBall.getMotionState().getWorldTransform(pBallTransform);
+			// update the graphics ball location from the physics ball
+			float[] vals = new float[16];
+			pBallTransform.getOpenGLMatrix(vals);
+			Matrix3D gBallXform = new Matrix3D(vals);
+			player1.setLocalTranslation(gBallXform);
+			dropTime += elapsedTimeMS;
+			if (dropTime > 50 && isNetworked)
 			{
-				physicsWorld.stepSimulation(1.0f / 60.0f, 8); // 1/60th sec, 8
-																// steps
-				// read and display the updated physicsBall position
-				Transform pBallTransform = new Transform();
-				physicsBall.getMotionState().getWorldTransform(pBallTransform);
-				// update the graphics ball location from the physics ball
-				float[] vals = new float[16];
-				pBallTransform.getOpenGLMatrix(vals);
-				Matrix3D gBallXform = new Matrix3D(vals);
-				player1.setLocalTranslation(gBallXform);
-				dropTime += elapsedTimeMS;
-				if (dropTime > 50)
-				{
-					 thisClient.sendMoveMessage(getPlayerPosition());
-					dropTime = 0;
-				}
+				 thisClient.sendMoveMessage(getPlayerPosition());
+				dropTime = 0;
 			}
+			
 		}
 
 		if (IsPlayerAlive)
@@ -712,7 +767,7 @@ public class FinalGame extends BaseGame
 	{
 		display.close();
 		super.shutdown();
-		if (thisClient != null)
+		if (isNetworked && thisClient != null)
 		{
 			thisClient.sendByeMessage();
 			try
@@ -750,9 +805,9 @@ public class FinalGame extends BaseGame
 		}
 	}
 
-	public void createGhostAvatar(UUID ghostID, String[] ghostPosition)
+	public void createGhostAvatar(UUID ghostID, String[] ghostPosition, String planet)
 	{
-		GhostAvatar newAvatar = new GhostAvatar(ghostID, ghostPosition);
+		GhostAvatar newAvatar = new GhostAvatar(ghostID, ghostPosition, planet, this);
 		ghostAvatars.put(ghostID, newAvatar);
 		addGameWorldObject(newAvatar.getSceneNode());
 	}
@@ -805,5 +860,13 @@ public class FinalGame extends BaseGame
 	public HUDString GetPlayersSunkHUD()
 	{
 		return playersSunkString;
+	}
+
+	public String getPlayerPlanet() {
+		return planetChoice;
+	}
+
+	public boolean isNetworkedGame() {
+		return isNetworked;
 	}
 }
