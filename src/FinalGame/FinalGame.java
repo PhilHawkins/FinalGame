@@ -156,6 +156,7 @@ public class FinalGame extends BaseGame
 	private static final int TimeUntilDeath = 10;
 	
 	private boolean isNetworked;
+	private boolean isFullScreen;
 	private String planetChoice;
 	private int playersSunk;
 
@@ -177,10 +178,27 @@ public class FinalGame extends BaseGame
 			ghostAvatars = new HashMap<UUID, GhostAvatar>();
 		}
 		
+		isFullScreen = promptFullScreen();
+		
 		planetChoice = getPlantetChoice();
 		
 		dropTime = 0;
 		playersSunk = 0;
+	}
+
+	private boolean promptFullScreen() {
+		System.out.println("Would you like to play in fullscreen mode? y/n ");
+		Scanner scanner = new Scanner(System.in);
+		String selection = scanner.next();
+		if(selection.equals("y")){
+			return true;
+		}else if(selection.equals("n")){
+			return false;
+		}
+		else{
+			System.out.println("Invalid input");
+			return promptFullScreen();
+		}
 	}
 
 	private int promptServerPort() {
@@ -264,7 +282,7 @@ public class FinalGame extends BaseGame
 
 	private IDisplaySystem createDisplaySystem()
 	{
-		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, false, "sage.renderer.jogl.JOGLRenderer");
+		IDisplaySystem display = new UltraDisplaySystem(1920, 1080, 24, 20, isFullScreen, "sage.renderer.jogl.JOGLRenderer");
 		System.out.print("\nWaiting for display creation...");
 		int count = 0;
 		// wait until display creation completes or a timeout occurs
