@@ -153,7 +153,7 @@ public class FinalGame extends BaseGame
 	HUDString playersSunkString, timeRemainingString;
 	int timeElaspsed;
 	boolean IsDeathTime = false;
-	private static final int TimeUntilDeath = 10;
+	private static final int TimeUntilDeath = 15;
 	
 	private boolean isNetworked;
 	private boolean isFullScreen;
@@ -394,7 +394,7 @@ public class FinalGame extends BaseGame
 		setEarParameters();
 
 		backgroundSound.play();
-		countdownSound.play();
+		//countdownSound.play();
 	}
 
 	private void setEarParameters()
@@ -687,11 +687,16 @@ public class FinalGame extends BaseGame
 	protected void update(float elapsedTimeMS)
 	{
 		timeElaspsed += elapsedTimeMS;
+		
 		if (!IsDeathTime && (TimeUntilDeath - (timeElaspsed / 1000)) < 0)
 		{
 			IsDeathTime = true;
 			timeRemainingString.setText("RUN!");
 			alien.startAnimation("my_animation");
+		}
+		else if (IsDeathTime)
+		{
+			// Don't do nothing
 		}
 		else
 		{
